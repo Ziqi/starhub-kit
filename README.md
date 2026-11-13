@@ -11,7 +11,7 @@
 [![REUSE 3.2](https://img.shields.io/badge/REUSE-3.2%20SPDX-brightgreen.svg)](https://reuse.software/)
 
 > **Language**: **English** | [简体中文 (Simplified Chinese)](./README.zh-CN.md)  
-> **Version**: `v1.0.2` · **License**: [MIT](./LICENSE) (`SPDX-2.3` / `REUSE 3.2`) · **Certifications**: [OpenSSF Best Practices `Silver` (`#16658`)](https://www.bestpractices.dev/projects/16658) + Sigstore `SLSA Build Level 3` + Ed25519 Signed Releases · **Runtime**: Python 3.9+ (Zero Third-Party Dependencies)
+> **Version**: `v1.0.3` · **License**: [MIT](./LICENSE) (`SPDX-2.3` / `REUSE 3.2`) · **Certifications**: [OpenSSF Best Practices `Silver` (`#16658`)](https://www.bestpractices.dev/projects/16658) + Sigstore `SLSA Build Level 3` + Ed25519 Signed Releases · **Runtime**: Python 3.9+ (Zero Third-Party Dependencies)
 
 **StarHub Kit** is a battle-tested, declarative **Multi-Site Mesh + Anti-Stall Transparent Gateway + Out-of-Band Lifeline + AI-Governed Infrastructure (`EGM 3.0`)** toolkit.
 
@@ -115,7 +115,7 @@ Every release and `main` build publishes a **Sigstore + GitHub OIDC `SLSA Build 
 
 ```bash
 # Verify GitHub OIDC / Sigstore SLSA Build Level 3 provenance certificate
-gh attestation verify starhub-kit-v1.0.2.tar.gz --repo Ziqi/starhub-kit
+gh attestation verify starhub-kit-v1.0.3.tar.gz --repo Ziqi/starhub-kit
 ```
 
 Released under the [MIT License](./LICENSE). Please review [GOVERNANCE.md](./GOVERNANCE.md), [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md), [CONTRIBUTING.md](./CONTRIBUTING.md), and [SECURITY.md](./SECURITY.md) (including §5 Threat Model & Assurance Case) before submitting a pull request.

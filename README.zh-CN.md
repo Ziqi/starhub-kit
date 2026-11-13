@@ -11,7 +11,7 @@
 [![REUSE 3.2](https://img.shields.io/badge/REUSE-3.2%20SPDX-brightgreen.svg)](https://reuse.software/)
 
 > **语言切换 (Language)**：[English](./README.md) | **简体中文**  
-> **版本**：`v1.0.2` · **开源协议**：[MIT](./LICENSE)（兼容 `SPDX-2.3` / `REUSE 3.2`） · **权威认证**：[OpenSSF Best Practices `Silver` 银牌（`#16658`）](https://www.bestpractices.dev/projects/16658) + Sigstore `SLSA Build Level 3` + Ed25519 离线签名 · **运行依赖**：Python 3.9+ 标准库（零第三方依赖）
+> **版本**：`v1.0.3` · **开源协议**：[MIT](./LICENSE)（兼容 `SPDX-2.3` / `REUSE 3.2`） · **权威认证**：[OpenSSF Best Practices `Silver` 银牌（`#16658`）](https://www.bestpractices.dev/projects/16658) + Sigstore `SLSA Build Level 3` + Ed25519 离线签名 · **运行依赖**：Python 3.9+ 标准库（零第三方依赖）
 
 **StarHub Kit（星枢开源套件）** 是一套经过跨地域多站点 7×24 实战锤炼的 **声明式异地零撞段组网 + 抗断流透明网关 + 带外反向救命绳 + AI 防幻觉工程治理（`StarHub EGM 3.0`）** 开源基础设施脚手架。
 
@@ -76,7 +76,7 @@ cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 
 ```bash
 # 一键验真 GitHub OIDC / Sigstore SLSA Build Level 3 密码学构建溯源证书
-gh attestation verify starhub-kit-v1.0.2.tar.gz --repo Ziqi/starhub-kit
+gh attestation verify starhub-kit-v1.0.3.tar.gz --repo Ziqi/starhub-kit
 ```
 
 本项目基于 [MIT License](./LICENSE) 协议开源。提交 PR 前请先阅读 [GOVERNANCE.md](./GOVERNANCE.md)、[CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)、[CONTRIBUTING.md](./CONTRIBUTING.md) 与 [SECURITY.md](./SECURITY.md)（含第 5 节架构威胁模型与安全保证论证）。
