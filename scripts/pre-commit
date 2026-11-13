@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 StarHub Contributors
+# SPDX-License-Identifier: MIT
+# StarHub EGM 3.0 Git Pre-Commit Gate (Tracked in scripts/pre-commit & installed to .git/hooks/pre-commit)
+set -euo pipefail
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+exec python3 "${REPO_ROOT}/scripts/starhub-doctor.py" --repo-root "${REPO_ROOT}" --local-docs-only

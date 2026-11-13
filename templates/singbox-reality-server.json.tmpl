@@ -1,0 +1,42 @@
+{
+  "log": {
+    "level": "warn",
+    "timestamp": true
+  },
+  "inbounds": [
+    {
+      "type": "vless",
+      "tag": "vless-reality-in",
+      "listen": "::",
+      "listen_port": 443,
+      "users": [
+        {
+          "name": "starhub-node",
+          "uuid": "<REPLACE_WITH_UUID_V4>",
+          "flow": "xtls-rprx-vision"
+        }
+      ],
+      "tls": {
+        "enabled": true,
+        "server_name": "cdn.example.com",
+        "reality": {
+          "enabled": true,
+          "handshake": {
+            "server": "cdn.example.com",
+            "server_port": 443
+          },
+          "private_key": "<REPLACE_WITH_SINGBOX_REALITY_PRIVATE_KEY>",
+          "short_id": [
+            "<REPLACE_WITH_HEX_SHORT_ID>"
+          ]
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ]
+}

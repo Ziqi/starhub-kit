@@ -1,0 +1,9 @@
+version = 1
+SPDX-PackageName = "starhub-kit"
+SPDX-PackageDownloadLocation = "https://github.com/Ziqi/starhub-kit"
+
+[[annotations]]
+path = "**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 StarHub Contributors"
+SPDX-License-Identifier = "MIT"

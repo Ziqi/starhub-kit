@@ -1,0 +1,69 @@
+# StarHub Kit 全域统一变更与故障闭环主台账 (`STARHUB-LEDGER`)
+
+> **版本**：`StarHub Kit v1.0.2`  
+> **设计原则**：告别在多份零散文档中重复抄写流水的传统做法，一切**架构演进 `[UPD]`**、**缺陷根因闭环 `[BUGFIX]`** 与**算力工作站专项变更 `[WORKSTATION]`** 均按时间倒序（Append-Only，最新在最上方）统一追加于本账本。  
+> **关联索引**：
+> - 静态机器事实源（SSOT）：[STARHUB_GROUND_TRUTH.json](../../STARHUB_GROUND_TRUTH.json) · [mihomo-shared-guardrails.yaml](../../scripts/profiles/mihomo-shared-guardrails.yaml)
+> - 重大事故 `5-Why` 复盘库：[docs/incidents/README.md](../incidents/README.md)
+> - 按 `[WORKSTATION]` 标签单独导出算力工作站变更摘要：`./bin/starhub export-workstation`
+
+---
+
+## 一、快速检索总表（Master Index）
+
+| 条目 ID | 标签 | 日期 | 涉及模块 | 一句话摘要 |
+|---|---|---|---|---|
+| [UPD-20261113-004](#upd-20261113-004) | `[UPD][SECURITY][OSS]` | 2026-11-13 | 全仓拓扑 / `README` / `starhub-ctl` / `starhub-doctor` | **StarHub Kit `v1.0.2` 获颁 OpenSSF Silver 银牌认证（`#16658`）、全量角色化去指纹重构与移动端 Gmail `Section 9a` 前置规则同步**：正式挂载 OpenSSF Best Practices `Silver` 徽章（`200%`），将全部节点/IoT/出口重构为通用中立工程角色，补齐移动端 Gmail 内嵌图/附件 `UDP/443 REJECT` 前置防遮蔽母版，并升级 `--verify-public-export` 硬件画像反泄露门禁 |
+| [UPD-20261113-003](#upd-20261113-003) | `[UPD][SECURITY][OSS]` | 2026-11-13 | `.github` / `scripts` / `tests` / `GOVERNANCE.md` | **StarHub Kit `v1.0.2` SLSA Level 3 证书、SPDX 2.3 SBOM 与 OpenSSF Silver 银牌基线落地**：新增 Sigstore OIDC `SLSA Build Level 3` 构建溯源证书工作流、`SPDX-2.3` SBOM 生成器、`fsfe/reuse-action` 强校验、`SECURITY-INSIGHTS.yml`、`GOVERNANCE.md` / `CODE_OF_CONDUCT.md` 及 `>=80%` 语句覆盖率 CI 门禁 |
+| [UPD-20261113-002](#upd-20261113-002) | `[UPD][SECURITY][OSS]` | 2026-11-13 | `tests` / `.github` / `SECURITY.md` | **StarHub Kit `v1.0.1` OpenSSF 深度供应链加固**：新增 `atheris` + 标准库双模模糊测试引擎（`tests/fuzz_starhub_ctl.py`）、`CODEOWNERS` 与分支保护、CodeQL `v4.39.3` 成组原子更新，以及 Ed25519 + SLSA/in-toto 签名溯源发布 |
+| [UPD-20261113-001](#upd-20261113-001) | `[UPD][EGM][OSS]` | 2026-11-13 | `starhub-ctl` / `starhub-doctor` / `docs` | **StarHub Kit `v1.0.0` 首个净室开源版发布**：落地零依赖声明式拓扑编译器、`100.x + 4via6` 零撞段组网蓝图、确定性分域 DNS 与 Apple/Gmail 精确 QUIC 治理、四路救命绳、摄像头断云闸及 EGM 3.0 八维门禁 |
+| [WORKSTATION-UPD-20261113-001](#workstation-upd-20261113-001) | `[WORKSTATION][UPD]` | 2026-11-13 | `workstation` (`100.64.0.32`) | **算力工作站参考模板落位**：定义独立海外出口 `vps2` (`198.51.100.12`) 物理分流与主机防火墙单向受控隔离基线 |
+
+---
+
+## 二、详细变更与闭环流水（Chronological Details · Newest First）
+
+### UPD-20261113-004
+- **标题**：`[UPD][SECURITY][OSS]` StarHub Kit `v1.0.2` 获颁 OpenSSF Best Practices `Silver` 银牌（`#16658`）、全量角色化中立重构与移动端 Gmail `Section 9a` 护栏合入
+- **日期**：`2026-11-13`
+- **核心交付清单**：
+  1. **获颁官方 OpenSSF Best Practices `Silver` 银牌认证（`Project #16658`）**：`Passing 67/67 = 100%` + `Silver 55/55 = 100%`（`tiered_percentage = 200%`），在中英文 `README`、[SECURITY.md](../../SECURITY.md) 与 `.github/security-insights.yml` 正式挂载实时徽章与审计证据链。
+  2. **全量角色化中立重构与反资产画像升级**：将全部示例节点、智能家居与出口名称统一标准化为无厂商/无个人设备痕迹的中立工程角色（`laptop`、`workstation`、`site-b-node`、`gpu-worker`、`agent_sandbox`、`ip_camera`、`EgressPrimary` 等），并在 `starhub-doctor.py --verify-public-export` 中增加私有设备/厂商标识符动态反泄露扫描。
+  3. **移动端 Gmail `Section 9a` 前置 QUIC 规则母版**：补充移动端附件/内嵌图代理（`mail-attachment`、`ci3~6`、`lh3~6.googleusercontent.com`）与 `robinfrontend-pa.googleapis.com` 精确 `UDP/443 REJECT` 规则，显式固化“必须置于广义 Google 代理规则上方”的顺序护栏。
+
+---
+
+### UPD-20261113-003
+- **标题**：`[UPD][SECURITY][OSS]` StarHub Kit `v1.0.2` 权威开源证书矩阵（`SLSA Level 3` / `SPDX-2.3` / `REUSE 3.2`）与 OpenSSF Silver 银牌治理基线落位
+- **日期**：`2026-11-13`
+- **核心交付清单**：
+  1. **Sigstore + GitHub OIDC `SLSA Build Level 3` 数字构建证书**：新增 `.github/workflows/attestation.yml`（`actions/attest-build-provenance` `v4.2.2`），自动签发 X.509 密码学溯源证书并发布至仓库 `/attestations` 页面，支持 `gh attestation verify` 验真。
+  2. **ISO/IEC 5962 (`SPDX-2.3`) SBOM 与 FSFE `REUSE 3.2` 强校验**：新增零依赖 `scripts/generate-sbom.py` 与标准 `LICENSES/MIT.txt`，并在 CI 接入官方 `fsfe/reuse-action` (`v6.0.0`) 逐文件版权审计。
+  3. **OpenSSF Silver（银牌）治理与 `>=80%` 覆盖率硬门禁**：补齐 [GOVERNANCE.md](../../GOVERNANCE.md)（含 DCO 签署与单维护者应急接管预案）、[CODE_OF_CONDUCT.md](../../CODE_OF_CONDUCT.md)、`.github/security-insights.yml`、[SECURITY.md](../../SECURITY.md) 第 5 节架构威胁模型与安全保证论证，以及 `tests/test_coverage_gate.py` 语句覆盖率 CI 硬门禁。
+
+---
+
+### UPD-20261113-002
+- **标题**：`[UPD][SECURITY][OSS]` StarHub Kit `v1.0.1` OpenSSF Scorecard 深度供应链加固与签名溯源发布
+- **日期**：`2026-11-13`
+- **核心加固清单**：
+  1. **双模安全不变量模糊测试（`tests/fuzz_starhub_ctl.py`）**：支持原生 Google `atheris` 覆盖率引导模糊测试与零依赖 2,000 轮随机变异测试，每次 PR/Push 自动验证 `STARHUB-BOT-NOSSH` 双栈 `:22 DROP`、分域 DNS 零 `fallback:` 与敏感密钥擦除三大不变量。
+  2. **CodeQL `v4.39.3` 40 位 SHA 钉死与 Dependabot 成组原子更新**：消除拆分升级 PR 版本撕裂，配合 `.github/CODEOWNERS` 与分支保护守护默认主干。
+  3. **Ed25519 + SLSA/in-toto 发行包签名溯源**：为 Release 归档包提供离线可验签 `.sig` 签名与 `.intoto.jsonl` DSSE 构建溯源清单。
+
+---
+
+### UPD-20261113-001
+- **标题**：`[UPD][EGM][OSS]` StarHub Kit `v1.0.0` 首个公开可复现版本发布（`MIT` 协议）
+- **日期**：`2026-11-13`
+- **核心能力清单**：
+  1. **一源声明式编译（`./bin/starhub`）**：从 [STARHUB_GROUND_TRUTH.json](../../STARHUB_GROUND_TRUTH.json) 一键编译双栈白名单防火墙、云端沙箱 `B2` 引导脚本、Mihomo 规则母版与透明网关骨架、摄像头物理断云闸、SSH 配置片段及四路反向救命绳 `systemd` 服务。
+  2. **StarHub EGM 3.0 工程治理脚手架**：统一 `AGENTS.md` 软链入口、「1 核 + 6 册 + 2 账」零碎片文档结构、Git `pre-commit` 与 GitHub Actions CI 自动零漂移校验，以及 `--verify-public-export` 数学级反隐私发布扫描门禁。
+  3. **预留 `v2.0` 插件化演进接口**：在 [ROADMAP-v2.md](../ROADMAP-v2.md) 冻结 `:3001` 动态探针与 `:8080` `StarHub Home OS v2.0-spec` 硬件驱动插件协议。
+
+---
+
+### WORKSTATION-UPD-20261113-001
+- **标题**：`[WORKSTATION][UPD]` 7×24 算力工作站独立出口分流与单向隔离基线模板
+- **日期**：`2026-11-13`
+- **实施要点**：为高吞吐工作站节点（`workstation` · 示例 `100.64.0.32`）绑定独立 VLESS-Reality 出口 `vps2` (`198.51.100.12`)，通过主机层防火墙阻断向异地私人节点反连并静默丢弃共享局域网入站探测，同时配置 `:2204` 带外救命绳。

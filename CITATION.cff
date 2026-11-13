@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you reference or build upon StarHub Kit in your research or engineering documentation, please cite it using this metadata."
+title: "StarHub Kit: Declarative Zero-Collision Mesh, Anti-Stall Gateway & AI-Governed Infrastructure Toolkit"
+type: software
+authors:
+  - name: "StarHub Contributors"
+version: 1.0.2
+date-released: "2026-11-13"
+license: MIT
+repository-code: "https://github.com/Ziqi/starhub-kit"
+url: "https://github.com/Ziqi/starhub-kit"
+keywords:
+  - tailscale
+  - mihomo
+  - declarative-infrastructure
+  - zero-trust-firewall
+  - ai-governance
+  - homelab
