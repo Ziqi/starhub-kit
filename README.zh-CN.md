@@ -7,7 +7,7 @@
 [![REUSE 3.2](https://img.shields.io/badge/REUSE-3.2%20SPDX-brightgreen.svg)](https://reuse.software/)
 
 > **语言切换 (Language)**：[English](./README.md) | **简体中文**  
-> **版本**：`v1.0.0` · **开源协议**：[MIT](./LICENSE)（兼容 `SPDX` / `REUSE 3.2`） · **运行依赖**：Python 3.9+ 标准库（零第三方依赖）
+> **版本**：`v1.0.1` · **开源协议**：[MIT](./LICENSE)（兼容 `SPDX` / `REUSE 3.2`） · **运行依赖**：Python 3.9+ 标准库（零第三方依赖）
 
 **StarHub Kit（星枢开源套件）** 是一套经过跨地域多站点 7×24 实战锤炼的 **声明式异地零撞段组网 + 抗断流透明网关 + 带外反向救命绳 + AI 防幻觉工程治理（`StarHub EGM 3.0`）** 开源基础设施脚手架。
 
@@ -40,8 +40,9 @@ cd starhub-kit
 # 3. 导出全套可上机部署包（双栈防火墙、Mihomo 网关配置骨架、摄像头断云闸、SSH 配置片段、救命绳单元）
 ./bin/starhub render --out-dir ./dist
 
-# 4. 运行 7 维离线 EGM 门禁自检（零网络请求，毫秒级完成白名单、死链锚点、脱敏与规则母版核验）
+# 4. 运行 7 维离线 EGM 门禁自检与 2,000 轮编译器模糊测试（零网络请求）
 ./bin/starhub doctor --local-docs-only
+python3 ./tests/fuzz_starhub_ctl.py --iterations 2000
 
 # 5. 安装 Git 提交前自动门禁钩子
 cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit

@@ -25,10 +25,20 @@ When granting cloud AI agents (such as ephemeral container sandboxes) read/actio
 
 ## 3. Supply-Chain Hardening & OpenSSF Compliance
 
-- **Immutable GitHub Actions (`Pinned-Dependencies`)**: All workflows in `.github/workflows/` (`ci.yml`, `scorecard.yml`, `codeql.yml`) pin actions to full 40-character commit SHAs with least-privilege `permissions` and `persist-credentials: false`, monitored weekly by `.github/dependabot.yml`.
-- **Static Analysis & Scorecard**: Every push to `main` runs **CodeQL** (Python SAST), **StarHub EGM 3.0** (`render --check` + 7-dim static harness), and **OpenSSF Scorecard** (`ossf/scorecard-action`).
+- **Immutable GitHub Actions (`Pinned-Dependencies`)**: All workflows in `.github/workflows/` (`ci.yml`, `scorecard.yml`, `codeql.yml`) pin actions to full 40-character commit SHAs with least-privilege `permissions` and `persist-credentials: false`, monitored weekly with grouped updates by `.github/dependabot.yml`.
+- **Static Analysis, Fuzzing & Scorecard**: Every push and pull request runs **CodeQL v4** (Python SAST), **Dual-Mode Fuzzing** (`tests/fuzz_starhub_ctl.py` supporting Google `atheris` + 2,000-iteration security-invariant mutation fuzzing), **StarHub EGM 3.0** (`render --check` + 7-dim static harness), and **OpenSSF Scorecard** (`ossf/scorecard-action`).
+- **Signed Releases & SLSA / in-toto Provenance (`Signed-Releases`)**: Official GitHub Releases include deterministic source archives (`starhub-kit-<tag>.tar.gz`), detached Ed25519 signatures (`.sig`), and signed in-toto DSSE provenance attestations (`.intoto.jsonl`). Verify release signatures against the official Ed25519 public key:
+  ```pem
+  -----BEGIN PUBLIC KEY-----
+  MCowBQYDK2VwAyEAxuIA6FCv17guUFZfrXZuTB+erFYRwrm2Lof3/hzm/HM=
+  -----END PUBLIC KEY-----
+  ```
+  ```bash
+  openssl pkeyutl -verify -pubin -inkey release_ed25519_pub.pem \
+    -rawin -in starhub-kit-v1.0.1.tar.gz -sigfile starhub-kit-v1.0.1.tar.gz.sig
+  ```
 - **SPDX / REUSE 3.2**: All source scripts carry `# SPDX-License-Identifier: MIT` headers, with repository-wide machine-readable licensing declared in `REUSE.toml` and citation metadata in `CITATION.cff`.
-- **Claiming the OpenSSF Best Practices (`Passing`) Badge**: Repository maintainers can log in via GitHub OAuth at `https://www.bestpractices.dev/en/projects/new` for `https://github.com/Ziqi/starhub-kit`—all required criteria (OSI MIT license, English documentation, automated test suite `./bin/starhub doctor`, SAST via CodeQL, vulnerability reporting channel, zero hardcoded credentials) are pre-satisfied out of the box.
+- **Claiming the OpenSSF Best Practices (`Passing`) Badge**: Repository maintainers can log in via GitHub OAuth at `https://www.bestpractices.dev/en/projects/new` for `https://github.com/Ziqi/starhub-kit`—all required criteria (OSI MIT license, English documentation, automated test & fuzz suite, SAST via CodeQL, signed releases, vulnerability reporting channel, zero hardcoded credentials) are pre-satisfied out of the box.
 
 ## 4. Reporting a Vulnerability
 
