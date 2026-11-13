@@ -1,0 +1,252 @@
+{
+  "schema_version": "3.1.0",
+  "repo_profile": "open_source_kit",
+  "system_name": "StarHub Kit",
+  "system_version": "v1.0.0",
+  "updated_at": "2026-11-13",
+  "home_lan_cidr": "192.0.2.0/24",
+  "admin_allowlist_nodes": [
+    "air",
+    "mini",
+    "studio",
+    "iphone",
+    "ipad",
+    "gw",
+    "home",
+    "panel"
+  ],
+  "ssot_workspace": {
+    "node": "panel",
+    "lan_ip": "192.0.2.13",
+    "tailscale_ip": "100.64.0.13",
+    "path": "/opt/starhub-kit",
+    "github_repo": "https://github.com/Ziqi/starhub-kit.git",
+    "dashboard_port": 3001,
+    "expected_probe_count": 16
+  },
+  "iot_ssot": {
+    "enabled": false,
+    "canonical_iot_dir": "iot/starhub-home",
+    "deprecated_iot_dirs": [
+      "starhub-home",
+      "iot/home-agent"
+    ]
+  },
+  "nodes": {
+    "modem": {
+      "cn_name": "主场光纤网关",
+      "lan_ip": "192.0.2.1",
+      "role": "Fiber ONT & fallback DHCP gateway"
+    },
+    "pve": {
+      "cn_name": "星枢母机",
+      "ssh_alias": ["pve"],
+      "lan_ip": "192.0.2.10",
+      "tailscale_4via6": "2001:db8:4a6::10",
+      "ports": [22, 8006],
+      "role": "Proxmox VE hypervisor (reachable via Tailscale 4via6 without /32 LAN route collision)"
+    },
+    "gw": {
+      "cn_name": "星枢总闸",
+      "ssh_alias": ["gw", "gw-rescue"],
+      "lan_ip": "192.0.2.11",
+      "lan_vip": "192.0.2.12",
+      "tailscale_ip": "100.64.0.11",
+      "tailscale_ip6": "2001:db8:a1e0::11",
+      "rescue_port": 2203,
+      "ports": [22, 53, 1053, 3939, 7890, 7892, 9090, 9199, 41642],
+      "role": "LXC 100 Transparent Gateway: Mihomo gvisor TUN + Deterministic Split-DNS + Precision QUIC Governance + Exit Node + Cam-Gate + Lifeline :2203"
+    },
+    "panel": {
+      "cn_name": "星枢看板与控制中枢",
+      "ssh_alias": ["panel"],
+      "lan_ip": "192.0.2.13",
+      "tailscale_ip": "100.64.0.13",
+      "tailscale_ip6": "2001:db8:a1e0::13",
+      "ports": [22, 3001, 41644],
+      "protected_ports": [3001, 3000, 8000, 9443, 9000],
+      "role": "LXC 102 Observability & SSOT Hub: :3001 health probes + dual-stack allowlist firewall + StarHub EGM 3.0 Doctor"
+    },
+    "home": {
+      "cn_name": "星枢智能中枢",
+      "ssh_alias": ["home"],
+      "lan_ip": "192.0.2.22",
+      "tailscale_ip": "100.64.0.22",
+      "tailscale_ip6": "2001:db8:a1e0::22",
+      "ports": [22, 8080, 41643],
+      "web_port": 8080,
+      "app_version": "StarHub Home OS v2.0-spec",
+      "cli_version": "shome v2.0-spec",
+      "role": "LXC 103 Smart Home & AI Hub (:8080 dual-stack allowlist + v2.0 driver plugin interface)"
+    },
+    "air": {
+      "cn_name": "随身主控笔电",
+      "ssh_alias": ["air"],
+      "lan_ip": "192.0.2.100",
+      "tailscale_ip": "100.64.0.100",
+      "tailscale_ip6": "2001:db8:a1e0::100",
+      "ports": [22, 17890],
+      "role": "Primary controller laptop (127.0.0.1:17890 adaptive loopback tunnel bypassing macOS Local Network blocks)"
+    },
+    "studio": {
+      "cn_name": "算力工作站",
+      "ssh_alias": ["studio", "studio-rescue"],
+      "lan_ip": "192.0.2.132",
+      "tailscale_ip": "100.64.0.132",
+      "tailscale_ip6": "2001:db8:a1e0::132",
+      "rescue_port": 2204,
+      "ports": [22, 7890, 17890, 19090],
+      "role": "24/7 Workstation with dedicated egress VPS2 + pf outbound/LAN isolation + Lifeline :2204"
+    },
+    "ipad": {
+      "cn_name": "移动平板",
+      "lan_ip": "192.0.2.102",
+      "tailscale_ip": "100.64.0.102",
+      "tailscale_ip6": "2001:db8:a1e0::102",
+      "role": "Mobile tablet controller over Tailscale"
+    },
+    "iphone": {
+      "cn_name": "移动手机",
+      "lan_ip": "192.0.2.103",
+      "tailscale_ip": "100.64.0.103",
+      "tailscale_ip6": "2001:db8:a1e0::103",
+      "role": "Mobile phone controller over Tailscale + Moshi"
+    },
+    "mini": {
+      "cn_name": "异地主场节点",
+      "ssh_alias": ["mini", "mini-rescue"],
+      "lan_ip": "198.51.100.45",
+      "tailscale_ip": "100.64.0.45",
+      "tailscale_ip6": "2001:db8:a1e0::45",
+      "rescue_port": 2202,
+      "ports": [22, 1053, 7890, 9090],
+      "role": "Site-B always-on Mac/Linux node with local Mihomo 127.0.0.1:7890 + 60s watchdog + Lifeline :2202"
+    },
+    "pc01": {
+      "cn_name": "异地无人值守训练机",
+      "ssh_alias": ["pc01", "pc01-rescue"],
+      "lan_ip": "198.51.100.44",
+      "tailscale_ip": "100.64.0.44",
+      "rescue_port": 2201,
+      "ports": [22, 7897, 9097],
+      "role": "Strictly one-way controlled GPU node (ForwardAgent no, accept-routes=false, exit-node=\"\", Lifeline :2201)"
+    },
+    "derp": {
+      "cn_name": "自建 DERP 与救命跳板",
+      "ssh_alias": ["derp"],
+      "public_ip": "203.0.113.10",
+      "tailscale_ip": "100.64.0.254",
+      "domain": "derp.example.net",
+      "root_domain_suffix": "example.net",
+      "ports": [22, 80, 443, 3478, 8443, 2201, 2202, 2203, 2204],
+      "role": "Custom Region 901 DERP (:443->:8443, STUN :3478/udp, bbr+fq) + 4-way reverse SSH Lifeline bastion (127.0.0.1:2201..2204)"
+    },
+    "grokbot_b2": {
+      "cn_name": "云端 Agent (B2 受限访客池)",
+      "tailscale_ips": [
+        "100.64.0.201",
+        "100.64.0.202"
+      ],
+      "tailscale_ip6s": [
+        "2001:db8:a1e0::201",
+        "2001:db8:a1e0::202"
+      ],
+      "dynamic_hostname_pattern": "^(grok-?bot|cso-grokbot|catx?-box)",
+      "bootstrap_script": "scripts/grokbot-tailscale-bootstrap.sh",
+      "proxy_listen": "127.0.0.1:1055",
+      "hostname_prefix": "grokbot",
+      "warmup_targets": ["100.64.0.13", "100.64.0.22", "100.64.0.100"],
+      "allowed_targets": ["100.64.0.13:3001", "100.64.0.22:8080"],
+      "blocked_chains": ["STARHUB-BOT-NOSSH", "STARHUB-BOT-NOSSH6"],
+      "role": "Ephemeral cloud AI sandbox pool: isolated /tmp/tailscale-<id> per instance, allowed ONLY Web APIs (:3001/:8080), hard-dropped on :22 SSH"
+    }
+  },
+  "egress_vps": {
+    "vps1": {
+      "name": "USStandard",
+      "ssh_alias": "vps1",
+      "ip": "198.51.100.11",
+      "port": 443,
+      "ssh_port": 22,
+      "ssh_jump": "gw",
+      "sni": "www.amazon.com",
+      "provider": "Primary VLESS-Reality Egress (bbr+fq)",
+      "consumers": "Site-A Gateway + Site-B Nodes"
+    },
+    "vps2": {
+      "name": "USReality",
+      "ssh_alias": "vps2",
+      "ip": "198.51.100.12",
+      "port": 443,
+      "ssh_port": 22,
+      "ssh_jump": "vps3",
+      "sni": "www.tesla.com",
+      "provider": "Dedicated Workstation VLESS-Reality Egress (bbr+fq)",
+      "consumers": "Workstation direct link + Gateway cascade backup"
+    },
+    "vps3": {
+      "name": "USRackNerd",
+      "ssh_alias": "vps3",
+      "ip": "198.51.100.13",
+      "port": 443,
+      "ssh_port": 22,
+      "ssh_jump": null,
+      "sni": "www.apple.com",
+      "provider": "Relay & Disaster-Recovery Egress (bbr+fq)",
+      "consumers": "Same-metro relay + multi-ASN fallback"
+    }
+  },
+  "smart_home_devices": {
+    "cucat_ezviz_cam": {
+      "cucat_wan_ip": "192.0.2.40",
+      "mac": "00:53:00:00:00:01",
+      "guardrail": "Audited via mangle FORWARD counter on gw; cam-gate.sh off physically drops cloud uplink while preserving LAN RTSP/App view"
+    },
+    "lilygo_hud": {
+      "lan_ip": "192.0.2.110",
+      "mac": "00:53:00:00:00:02",
+      "guardrail": "Polls gw :3939 / :9199 for physical EYES ON/OFF privacy indicator"
+    },
+    "xiaomi_tv": {
+      "lan_ip": "192.0.2.111",
+      "mac": "00:53:00:00:00:03",
+      "ports": [6095, 49152, 5555],
+      "guardrail": "Keep global Android proxy :0 for domestic apps; bind proxy inside SmartTube only; use soft-black-screen standby instead of keycode 223"
+    },
+    "bedroom_homepod": {
+      "lan_ip": "192.0.2.112",
+      "mac": "00:53:00:00:00:04",
+      "ports": [7000],
+      "guardrail": "AirPlay 2 TTS & voice Q&A via pyatv (pin srptools==1.0.1 + process mutex)"
+    }
+  },
+  "retired_assets_blocklist": [
+    "100.64.0.250",
+    "2001:db8:a1e0::dead"
+  ],
+  "root_markdown_symlinks": {
+    "CLAUDE.md": "AGENTS.md",
+    "GROK.md": "AGENTS.md"
+  },
+  "allowed_active_markdown_files": [
+    "README.md",
+    "README.zh-CN.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "AGENTS.md",
+    "docs/01-架构与IP全景.md",
+    "docs/02-日常运维与变更升级.md",
+    "docs/03-排障与急救手册.md",
+    "docs/04-日志与审计索引.md",
+    "docs/05-智能家居与AI中枢全景.md",
+    "docs/06-AI接力开发与Prompt手册.md",
+    "docs/ROADMAP-v2.md",
+    "docs/ops/STARHUB-LEDGER.md",
+    "scripts/starhub-gw-root-README.md"
+  ],
+  "forbidden_stale_phrases": [
+    "# 星枢 2.0",
+    "settings put global http_proxy",
+    "KEYCODE_SLEEP 223"
+  ]
+}

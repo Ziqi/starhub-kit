@@ -1,0 +1,129 @@
+# StarHub 3.0 Deterministic Transparent Gateway Config Skeleton (chmod 0600 on live host)
+mixed-port: 7890
+redir-port: 7892
+allow-lan: true
+mode: rule
+log-level: info
+ipv6: true
+external-controller: 0.0.0.0:9090
+secret: ""
+
+sniffer:
+  enable: true
+  override-destination: false
+
+tun:
+  enable: true
+  stack: gvisor
+  device: Meta
+  auto-route: true
+  auto-detect-interface: true
+  dns-hijack:
+    - any:53
+
+dns:
+  enable: true
+  listen: 0.0.0.0:1053
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.0/16
+  respect-rules: true
+  default-nameserver:
+    - 223.5.5.5
+  nameserver:
+    - https://dns.alidns.com/dns-query
+  nameserver-policy:
+    "+.ts.net":
+      - "100.100.100.100#tailscale0"
+    "geosite:cn,private":
+      - "https://dns.alidns.com/dns-query"
+    "geosite:geolocation-!cn":
+      - "https://1.1.1.1/dns-query#USStandard"
+
+proxies:
+  - name: "USStandard"
+    type: vless
+    server: 198.51.100.11
+    port: 443
+    uuid: "<REPLACE_WITH_YOUR_VLESS_UUID>"
+    network: tcp
+    tls: true
+    udp: true
+    flow: xtls-rprx-vision
+    servername: www.amazon.com
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: "<REPLACE_WITH_REALITY_PUBLIC_KEY>"
+      short-id: "<REPLACE_WITH_SHORT_ID>"
+  - name: "USReality"
+    type: vless
+    server: 198.51.100.12
+    port: 443
+    uuid: "<REPLACE_WITH_YOUR_VLESS_UUID>"
+    network: tcp
+    tls: true
+    udp: true
+    flow: xtls-rprx-vision
+    servername: www.tesla.com
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: "<REPLACE_WITH_REALITY_PUBLIC_KEY>"
+      short-id: "<REPLACE_WITH_SHORT_ID>"
+  - name: "USRackNerd"
+    type: vless
+    server: 198.51.100.13
+    port: 443
+    uuid: "<REPLACE_WITH_YOUR_VLESS_UUID>"
+    network: tcp
+    tls: true
+    udp: true
+    flow: xtls-rprx-vision
+    servername: www.apple.com
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: "<REPLACE_WITH_REALITY_PUBLIC_KEY>"
+      short-id: "<REPLACE_WITH_SHORT_ID>"
+
+proxy-groups:
+  - name: "PROXY"
+    type: fallback
+    url: "https://www.gstatic.com/generate_204"
+    interval: 120
+    proxies: ["USStandard", "USReality", "USRackNerd"]
+
+rules:
+  - DST-PORT,3478,DIRECT
+  - DOMAIN-SUFFIX,tailscale.com,DIRECT
+  - DOMAIN-SUFFIX,ts.net,DIRECT
+  - DOMAIN-SUFFIX,example.net,DIRECT
+  - IP-CIDR,203.0.113.10/32,DIRECT,no-resolve
+  - IP-CIDR,198.51.100.11/32,DIRECT,no-resolve
+  - IP-CIDR,198.51.100.12/32,DIRECT,no-resolve
+  - IP-CIDR,198.51.100.13/32,DIRECT,no-resolve
+  - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,tv.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,itunes.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,media.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,apps.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,apis.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,music.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,videos.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,mzstatic.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,aaplimg.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,itunes.apple.com.edgesuite.net)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,itunes-apple.com.akadns.net)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,apple.map.fastly.net)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,mail.google.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,inbox.google.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,gmail.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,oauth2.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,oauthaccountmanager.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,gogaccountservice-pa.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,notifications-pa.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,peoplestack-pa.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,taskassist-pa.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,addons-pa.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,appsgenaiserver-pa.googleapis.com)),REJECT
+  - GEOSITE,cn,DIRECT
+  - GEOIP,CN,DIRECT,no-resolve
+  - MATCH,PROXY

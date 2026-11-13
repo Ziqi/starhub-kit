@@ -1,0 +1,65 @@
+# ==============================================================================
+# StarHub 3.0 — Mihomo 跨节点共享防环与协议治理规则母版 (Mihomo Ruleset Invariants)
+# 路径: /opt/starhub-kit/scripts/profiles/mihomo-shared-guardrails.yaml
+# 说明: 专职定义 Mihomo DNS、防环与精准应用层 QUIC 规则不变量（节点/IoT/退役黑名单均
+#       唯一归口于根目录 STARHUB_GROUND_TRUTH.json，杜绝双处重复维护）。
+#       采用 JSON 兼容的 YAML 1.2 子集编写，无需额外安装 PyYAML 即可由标准库解析。
+# 严禁事项: 本文件严禁写入任何 UUID、私钥、Bearer Secret 等敏感凭据。
+# ==============================================================================
+{
+  "schema_version": "3.0.0",
+  "updated_at": "2026-11-13",
+  "gw_dns_invariants": {
+    "require_respect_rules": true,
+    "forbid_blind_fallback": true,
+    "required_nameserver_policy_pairs": [
+      ["+.ts.net", "100.100.100.100#tailscale0"],
+      ["geosite:cn,private", "https://dns.alidns.com/dns-query"],
+      ["geosite:geolocation-!cn", "https://1.1.1.1/dns-query#USStandard"]
+    ]
+  },
+  "mandatory_anti_loop_rules": [
+    "DST-PORT,3478,DIRECT",
+    "DOMAIN-SUFFIX,tailscale.com,DIRECT",
+    "DOMAIN-SUFFIX,ts.net,DIRECT",
+    "DOMAIN-SUFFIX,example.net,DIRECT",
+    "IP-CIDR,203.0.113.10/32,DIRECT,no-resolve",
+    "IP-CIDR,198.51.100.11/32,DIRECT,no-resolve",
+    "IP-CIDR,198.51.100.12/32,DIRECT,no-resolve",
+    "IP-CIDR,198.51.100.13/32,DIRECT,no-resolve",
+    "IP-CIDR,100.64.0.0/10,DIRECT,no-resolve"
+  ],
+  "apple_quic_reject_rules": [
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,tv.apple.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,itunes.apple.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,media.apple.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,apps.apple.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,apis.apple.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,music.apple.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,videos.apple.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,mzstatic.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,aaplimg.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,itunes.apple.com.edgesuite.net)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,itunes-apple.com.akadns.net)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,apple.map.fastly.net)),REJECT"
+  ],
+  "gmail_quic_reject_rules": [
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,mail.google.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,inbox.google.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,gmail.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,oauth2.googleapis.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,oauthaccountmanager.googleapis.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,gogaccountservice-pa.googleapis.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,notifications-pa.googleapis.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,peoplestack-pa.googleapis.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,taskassist-pa.googleapis.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,addons-pa.googleapis.com)),REJECT",
+    "AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,appsgenaiserver-pa.googleapis.com)),REJECT"
+  ],
+  "protected_youtube_cronet_domains": [
+    "youtube.com",
+    "googlevideo.com",
+    "youtubei.googleapis.com",
+    "gstatic.com"
+  ]
+}
