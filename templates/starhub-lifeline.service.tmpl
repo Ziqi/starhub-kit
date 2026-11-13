@@ -1,0 +1,21 @@
+[Unit]
+Description=StarHub Out-of-Band Reverse SSH Lifeline (__NODE_NAME__ -> __DERP_IP__:__RESCUE_PORT__)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=10
+ExecStart=/usr/bin/ssh -N \
+  -o BatchMode=yes \
+  -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=15 \
+  -o ServerAliveCountMax=2 \
+  -o StrictHostKeyChecking=accept-new \
+  -i /usr/local/starhub/lifeline/id_ed25519 \
+  -R 127.0.0.1:__RESCUE_PORT__:127.0.0.1:22 \
+  lifeline@__DERP_IP__
+
+[Install]
+WantedBy=multi-user.target
