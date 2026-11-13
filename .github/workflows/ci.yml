@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2026 StarHub Contributors
 # SPDX-License-Identifier: MIT
 name: StarHub EGM 3.0 CI
 
@@ -21,6 +22,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: FSFE REUSE 3.2 SPDX License & Copyright Audit
+        uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6.0.0
+
       - name: Set up Python 3.12
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -29,10 +33,14 @@ jobs:
       - name: Verify compiler parity (zero drift vs STARHUB_GROUND_TRUTH.json)
         run: ./bin/starhub render --check
 
-      - name: Render full deployment bundle to dist/ and check shell syntax
+      - name: Render full deployment bundle, SPDX-2.3 SBOM & check shell syntax
         run: |
           ./bin/starhub render --out-dir ./dist
+          python3 ./scripts/generate-sbom.py --version ci-check --output ./dist/starhub-kit.spdx.json
           bash -n ./bin/starhub ./scripts/*.sh ./dist/*.sh
+
+      - name: Enforce >=80% statement coverage gate (OpenSSF Silver)
+        run: python3 ./tests/test_coverage_gate.py --min-coverage 80
 
       - name: Run 2,000-iteration compiler & security invariant fuzz suite
         run: python3 ./tests/fuzz_starhub_ctl.py --iterations 2000

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 StarHub Contributors
 # SPDX-License-Identifier: MIT
 """
 StarHub Kit Fuzzing Harness (tests/fuzz_starhub_ctl.py)

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 StarHub Contributors
 # SPDX-License-Identifier: MIT
 # StarHub Kit CLI Wrapper — Zero-dependency entrypoint
 set -euo pipefail

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 StarHub Contributors
 # SPDX-License-Identifier: MIT
 """
 StarHub EGM 3.0 — 全栈唯一事实源、八维零漂移门禁与反隐私发布引擎

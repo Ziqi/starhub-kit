@@ -3,11 +3,14 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![StarHub EGM 3.0 CI](https://github.com/Ziqi/starhub-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/Ziqi/starhub-kit/actions/workflows/ci.yml)
 [![CodeQL SAST](https://github.com/Ziqi/starhub-kit/actions/workflows/codeql.yml/badge.svg)](https://github.com/Ziqi/starhub-kit/actions/workflows/codeql.yml)
+[![SLSA 3](https://slsa.dev/images/gh-badge-level3.svg)](https://github.com/Ziqi/starhub-kit/attestations)
+[![Supply-Chain Attestations](https://github.com/Ziqi/starhub-kit/actions/workflows/attestation.yml/badge.svg)](https://github.com/Ziqi/starhub-kit/attestations)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Ziqi/starhub-kit/badge)](https://scorecard.dev/viewer/?uri=github.com/Ziqi/starhub-kit)
+[![SBOM: SPDX 2.3](https://img.shields.io/badge/SBOM-SPDX%202.3-00599C.svg)](https://github.com/Ziqi/starhub-kit/releases/latest)
 [![REUSE 3.2](https://img.shields.io/badge/REUSE-3.2%20SPDX-brightgreen.svg)](https://reuse.software/)
 
 > **语言切换 (Language)**：[English](./README.md) | **简体中文**  
-> **版本**：`v1.0.1` · **开源协议**：[MIT](./LICENSE)（兼容 `SPDX` / `REUSE 3.2`） · **运行依赖**：Python 3.9+ 标准库（零第三方依赖）
+> **版本**：`v1.0.2` · **开源协议**：[MIT](./LICENSE)（兼容 `SPDX-2.3` / `REUSE 3.2`） · **供应链证书**：Sigstore `SLSA Build Level 3` + Ed25519 离线签名 · **运行依赖**：Python 3.9+ 标准库（零第三方依赖）
 
 **StarHub Kit（星枢开源套件）** 是一套经过跨地域多站点 7×24 实战锤炼的 **声明式异地零撞段组网 + 抗断流透明网关 + 带外反向救命绳 + AI 防幻觉工程治理（`StarHub EGM 3.0`）** 开源基础设施脚手架。
 
@@ -66,6 +69,13 @@ cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 
 ---
 
-## 开源协议与贡献指南
+## 供应链数字证书验真与社区治理
 
-本项目基于 [MIT License](./LICENSE) 协议开源。提交 PR 前请先阅读 [CONTRIBUTING.md](./CONTRIBUTING.md) 与 [SECURITY.md](./SECURITY.md)。
+每次主干构建与版本发布均自动签发 **Sigstore + GitHub OIDC `SLSA Build Level 3` X.509 溯源证书**、**ISO/IEC 5962 (`SPDX-2.3`) 软件物料清单（SBOM）** 与 **Ed25519 离线数字签名**：
+
+```bash
+# 一键验真 GitHub OIDC / Sigstore SLSA Build Level 3 密码学构建溯源证书
+gh attestation verify starhub-kit-bundle.tar.gz --repo Ziqi/starhub-kit
+```
+
+本项目基于 [MIT License](./LICENSE) 协议开源。提交 PR 前请先阅读 [GOVERNANCE.md](./GOVERNANCE.md)、[CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)、[CONTRIBUTING.md](./CONTRIBUTING.md) 与 [SECURITY.md](./SECURITY.md)（含第 5 节架构威胁模型与安全保证论证）。

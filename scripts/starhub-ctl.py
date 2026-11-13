@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 StarHub Contributors
 # SPDX-License-Identifier: MIT
 """
 StarHub Declarative Topology Compiler & Toolkit CLI (starhub-ctl.py)

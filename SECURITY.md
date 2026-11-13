@@ -37,9 +37,23 @@ When granting cloud AI agents (such as ephemeral container sandboxes) read/actio
   openssl pkeyutl -verify -pubin -inkey release_ed25519_pub.pem \
     -rawin -in starhub-kit-v1.0.1.tar.gz -sigfile starhub-kit-v1.0.1.tar.gz.sig
   ```
-- **SPDX / REUSE 3.2**: All source scripts carry `# SPDX-License-Identifier: MIT` headers, with repository-wide machine-readable licensing declared in `REUSE.toml` and citation metadata in `CITATION.cff`.
+- **SPDX / REUSE 3.2**: All source scripts carry standard SPDX `MIT` license and copyright headers, with repository-wide machine-readable licensing declared in `REUSE.toml`, license text in `LICENSES/MIT.txt`, and citation metadata in `CITATION.cff`.
 - **Claiming the OpenSSF Best Practices (`Passing`) Badge**: Repository maintainers can log in via GitHub OAuth at `https://www.bestpractices.dev/en/projects/new` for `https://github.com/Ziqi/starhub-kit`—all required criteria (OSI MIT license, English documentation, automated test & fuzz suite, SAST via CodeQL, signed releases, vulnerability reporting channel, zero hardcoded credentials) are pre-satisfied out of the box.
 
-## 4. Reporting a Vulnerability
+## 4. Reporting a Vulnerability (SLA & Coordinated Disclosure)
 
-Please do **not** open public GitHub issues for sensitive security vulnerabilities (e.g., firewall bypasses in `STARHUB-*-ACL` or sanitizer evasions). Use GitHub's **Report a vulnerability** (Private Security Advisories) tab on the repository so maintainers can validate and ship a fix prior to disclosure.
+Please do **not** open public GitHub issues for sensitive security vulnerabilities (e.g., firewall bypasses in `STARHUB-*-ACL` or sanitizer evasions). Use GitHub's **Report a vulnerability** (Private Security Advisories: `https://github.com/Ziqi/starhub-kit/security/advisories/new`) so maintainers can validate and ship a fix prior to public disclosure:
+- **Initial Acknowledgement SLA**: Within **48 hours**.
+- **Triage & Remediation Target**: Within **14 days** for critical/high severity issues (maximum coordinated embargo **90 days**).
+
+## 5. Architecture Threat Model & Security Assurance Case
+
+To satisfy **OpenSSF Best Practices (Silver)** security design review (`security_review`) and assurance case (`assurance_case`) requirements, `starhub-kit` documents explicit trust boundaries and fail-closed controls:
+
+| Trust Boundary / Threat Vector | Attack Scenario | Fail-Closed Engineering Control & Verification |
+|---|---|---|
+| **TB-1: Cloud AI Sandbox (`B2`) -> Internal Core (`panel` / `home`)** | Compromised or prompt-injected cloud agent attempts lateral movement over Tailscale to `:22` SSH or `:8000/:9000/:9443` Docker/Portainer sockets. | `STARHUB-BOT-NOSSH` & `STARHUB-BOT-NOSSH6` chains are inserted at rule `#1` on TCP `:22` (`DROP`), while `STARHUB-DASH-ACL` / `STARHUB-HOME-ACL` only `RETURN` on HTTP `:3001` / `:8080`. Asserted on 2,000 mutated topologies in `tests/fuzz_starhub_ctl.py`. |
+| **TB-2: Dual-Stack Gateway (`gw`) -> Public Internet** | LAN client leaks unproxied IPv6 traffic when `gw` acts as Tailscale Exit Node, or DNS `fallback:` racing leaks split-horizon queries. | `STARHUB-IPV6-EXIT-GUARD` drops non-allowed forward IPv6 egress; `mihomo-config-backup.yaml` disables `fallback:` and enforces `respect-rules: true` + deterministic `nameserver-policy`. Asserted in `DIM6-MIHOMO-GUARD`. |
+| **TB-3: Commercial IoT Camera -> Vendor Cloud** | Closed-source camera firmware streams audio/video to external cloud despite app-level "privacy mode". | Kernel-level `cam-gate.sh off` inserts `iptables -t mangle -I FORWARD 1 -s <cam_ip> -o Meta -j DROP` at the gateway while keeping local LAN RTSP reachable. |
+| **TB-4: Private Production Repo -> Public Open-Source Kit** | Operator accidentally commits real WAN/LAN/Tailscale IPs, MACs, `.env` secrets, or private keys during public export. | `DIM4-SECRET-GUARD` blocks `.env` and PEM key headers; `--verify-public-export` extracts all sensitive tokens from private SSOT and scans both working tree and `git log -p --all` with zero-tolerance exit code `1`. |
+| **TB-5: CI/CD & Release Supply Chain** | Upstream GitHub Action tag hijacking or tampered release archive distribution. | 40-char SHA pinning (`Pinned-Dependencies = 10/10`), zero `contents: write` workflow tokens (`Token-Permissions = 10/10`), GitHub OIDC + Sigstore `SLSA Build Level 3` X.509 attestations (`/attestations`), SPDX-2.3 SBOM, and detached Ed25519 `.sig` + `.intoto.jsonl` bundles. |

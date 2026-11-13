@@ -3,11 +3,14 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![StarHub EGM 3.0 CI](https://github.com/Ziqi/starhub-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/Ziqi/starhub-kit/actions/workflows/ci.yml)
 [![CodeQL SAST](https://github.com/Ziqi/starhub-kit/actions/workflows/codeql.yml/badge.svg)](https://github.com/Ziqi/starhub-kit/actions/workflows/codeql.yml)
+[![SLSA 3](https://slsa.dev/images/gh-badge-level3.svg)](https://github.com/Ziqi/starhub-kit/attestations)
+[![Supply-Chain Attestations](https://github.com/Ziqi/starhub-kit/actions/workflows/attestation.yml/badge.svg)](https://github.com/Ziqi/starhub-kit/attestations)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Ziqi/starhub-kit/badge)](https://scorecard.dev/viewer/?uri=github.com/Ziqi/starhub-kit)
+[![SBOM: SPDX 2.3](https://img.shields.io/badge/SBOM-SPDX%202.3-00599C.svg)](https://github.com/Ziqi/starhub-kit/releases/latest)
 [![REUSE 3.2](https://img.shields.io/badge/REUSE-3.2%20SPDX-brightgreen.svg)](https://reuse.software/)
 
 > **Language**: **English** | [简体中文 (Simplified Chinese)](./README.zh-CN.md)  
-> **Version**: `v1.0.1` · **License**: [MIT](./LICENSE) (`SPDX` / `REUSE 3.2`) · **Runtime**: Python 3.9+ (Zero Third-Party Dependencies)
+> **Version**: `v1.0.2` · **License**: [MIT](./LICENSE) (`SPDX-2.3` / `REUSE 3.2`) · **Supply Chain**: Sigstore `SLSA Build Level 3` + Ed25519 Signed Releases · **Runtime**: Python 3.9+ (Zero Third-Party Dependencies)
 
 **StarHub Kit** is a battle-tested, declarative **Multi-Site Mesh + Anti-Stall Transparent Gateway + Out-of-Band Lifeline + AI-Governed Infrastructure (`EGM 3.0`)** toolkit.
 
@@ -105,6 +108,13 @@ python3 scripts/starhub-doctor.py \
 
 ---
 
-## License & Contributing
+## Supply-Chain Verification & Governance
 
-Released under the [MIT License](./LICENSE). Contributions are welcome—please read [CONTRIBUTING.md](./CONTRIBUTING.md) and [SECURITY.md](./SECURITY.md) before submitting a pull request.
+Every release and `main` build publishes a **Sigstore + GitHub OIDC `SLSA Build Level 3` provenance certificate**, an **ISO/IEC 5962 (`SPDX-2.3`) SBOM**, and an offline **Ed25519 signature**:
+
+```bash
+# Verify GitHub OIDC / Sigstore SLSA Build Level 3 provenance certificate
+gh attestation verify starhub-kit-bundle.tar.gz --repo Ziqi/starhub-kit
+```
+
+Released under the [MIT License](./LICENSE). Please review [GOVERNANCE.md](./GOVERNANCE.md), [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md), [CONTRIBUTING.md](./CONTRIBUTING.md), and [SECURITY.md](./SECURITY.md) (including §5 Threat Model & Assurance Case) before submitting a pull request.

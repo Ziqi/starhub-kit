@@ -13,13 +13,17 @@ Thank you for contributing to **StarHub Kit** (`starhub-kit`), the declarative, 
      ```bash
      cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
      ```
-   - Every pull request must pass all three checks with `FAIL=0`:
+   - Every pull request must pass all five automated gates with `FAIL=0`:
      ```bash
      ./bin/starhub render --check
      ./bin/starhub render --out-dir ./dist && bash -n ./bin/starhub ./scripts/*.sh ./dist/*.sh
+     python3 ./tests/test_coverage_gate.py --min-coverage 80
+     python3 ./tests/fuzz_starhub_ctl.py --iterations 2000
      ./bin/starhub doctor --local-docs-only
      ```
-4. **RFC Documentation Addresses Only**:
+4. **Developer Certificate of Origin (DCO `Signed-off-by`) & Community Governance**:
+   - Sign off every commit with `git commit -s` (`Signed-off-by: Your Name <you@example.com>`) per [GOVERNANCE.md](GOVERNANCE.md), and abide by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+5. **RFC Documentation Addresses Only**:
    - All examples, tests, and documentation in this repository MUST strictly use IETF reserved documentation ranges:
      - IPv4 LAN / WAN: `192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24` (RFC 5737)
      - CGNAT / Mesh: `100.64.0.0/10` (RFC 6598)

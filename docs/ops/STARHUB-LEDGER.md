@@ -1,6 +1,6 @@
 # StarHub Kit 全域统一变更与故障闭环主台账 (`STARHUB-LEDGER`)
 
-> **版本**：`StarHub Kit v1.0.1`  
+> **版本**：`StarHub Kit v1.0.2`  
 > **设计原则**：告别在多份零散文档中重复抄写流水的传统做法，一切**架构演进 `[UPD]`**、**缺陷根因闭环 `[BUGFIX]`** 与**算力工作站专项变更 `[STUDIO]`** 均按时间倒序（Append-Only，最新在最上方）统一追加于本账本。  
 > **关联索引**：
 > - 静态机器事实源（SSOT）：[STARHUB_GROUND_TRUTH.json](../../STARHUB_GROUND_TRUTH.json) · [mihomo-shared-guardrails.yaml](../../scripts/profiles/mihomo-shared-guardrails.yaml)
@@ -13,6 +13,7 @@
 
 | 条目 ID | 标签 | 日期 | 涉及模块 | 一句话摘要 |
 |---|---|---|---|---|
+| [UPD-20261113-003](#upd-20261113-003) | `[UPD][SECURITY][OSS]` | 2026-11-13 | `.github` / `scripts` / `tests` / `GOVERNANCE.md` | **StarHub Kit `v1.0.2` SLSA Level 3 证书、SPDX 2.3 SBOM 与 OpenSSF Silver 银牌基线落地**：新增 Sigstore OIDC `SLSA Build Level 3` 构建溯源证书工作流、`SPDX-2.3` SBOM 生成器、`fsfe/reuse-action` 强校验、`SECURITY-INSIGHTS.yml`、`GOVERNANCE.md` / `CODE_OF_CONDUCT.md` 及 `>=80%` 语句覆盖率 CI 门禁 |
 | [UPD-20261113-002](#upd-20261113-002) | `[UPD][SECURITY][OSS]` | 2026-11-13 | `tests` / `.github` / `SECURITY.md` | **StarHub Kit `v1.0.1` OpenSSF 深度供应链加固**：新增 `atheris` + 标准库双模模糊测试引擎（`tests/fuzz_starhub_ctl.py`）、`CODEOWNERS` 与分支保护、CodeQL `v4.39.3` 成组原子更新，以及 Ed25519 + SLSA/in-toto 签名溯源发布 |
 | [UPD-20261113-001](#upd-20261113-001) | `[UPD][EGM][OSS]` | 2026-11-13 | `starhub-ctl` / `starhub-doctor` / `docs` | **StarHub Kit `v1.0.0` 首个净室开源版发布**：落地零依赖声明式拓扑编译器、`100.x + 4via6` 零撞段组网蓝图、确定性分域 DNS 与 Apple/Gmail 精确 QUIC 治理、四路救命绳、摄像头断云闸及 EGM 3.0 八维门禁 |
 | [STUDIO-UPD-20261113-001](#studio-upd-20261113-001) | `[STUDIO][UPD]` | 2026-11-13 | `studio` (`100.64.0.132`) | **算力工作站参考模板落位**：定义独立海外出口 `vps2` (`198.51.100.12`) 物理分流与主机防火墙单向受控隔离基线 |
@@ -20,6 +21,16 @@
 ---
 
 ## 二、详细变更与闭环流水（Chronological Details · Newest First）
+
+### UPD-20261113-003
+- **标题**：`[UPD][SECURITY][OSS]` StarHub Kit `v1.0.2` 权威开源证书矩阵（`SLSA Level 3` / `SPDX-2.3` / `REUSE 3.2`）与 OpenSSF Silver 银牌治理基线落位
+- **日期**：`2026-11-13`
+- **核心交付清单**：
+  1. **Sigstore + GitHub OIDC `SLSA Build Level 3` 数字构建证书**：新增 `.github/workflows/attestation.yml`（`actions/attest-build-provenance` `v4.2.2`），自动签发 X.509 密码学溯源证书并发布至仓库 `/attestations` 页面，支持 `gh attestation verify` 验真。
+  2. **ISO/IEC 5962 (`SPDX-2.3`) SBOM 与 FSFE `REUSE 3.2` 强校验**：新增零依赖 `scripts/generate-sbom.py` 与标准 `LICENSES/MIT.txt`，并在 CI 接入官方 `fsfe/reuse-action` (`v6.0.0`) 逐文件版权审计。
+  3. **OpenSSF Silver（银牌）治理与 `>=80%` 覆盖率硬门禁**：补齐 [GOVERNANCE.md](../../GOVERNANCE.md)（含 DCO 签署与单维护者应急接管预案）、[CODE_OF_CONDUCT.md](../../CODE_OF_CONDUCT.md)、`.github/security-insights.yml`、[SECURITY.md](../../SECURITY.md) 第 5 节架构威胁模型与安全保证论证，以及 `tests/test_coverage_gate.py` 语句覆盖率 CI 硬门禁。
+
+---
 
 ### UPD-20261113-002
 - **标题**：`[UPD][SECURITY][OSS]` StarHub Kit `v1.0.1` OpenSSF Scorecard 深度供应链加固与签名溯源发布
