@@ -7,7 +7,7 @@
 [![REUSE 3.2](https://img.shields.io/badge/REUSE-3.2%20SPDX-brightgreen.svg)](https://reuse.software/)
 
 > **Language**: **English** | [简体中文 (Simplified Chinese)](./README.zh-CN.md)  
-> **Version**: `v1.0.0` · **License**: [MIT](./LICENSE) (`SPDX` / `REUSE 3.2`) · **Runtime**: Python 3.9+ (Zero Third-Party Dependencies)
+> **Version**: `v1.0.1` · **License**: [MIT](./LICENSE) (`SPDX` / `REUSE 3.2`) · **Runtime**: Python 3.9+ (Zero Third-Party Dependencies)
 
 **StarHub Kit** is a battle-tested, declarative **Multi-Site Mesh + Anti-Stall Transparent Gateway + Out-of-Band Lifeline + AI-Governed Infrastructure (`EGM 3.0`)** toolkit.
 
@@ -69,8 +69,9 @@ cd starhub-kit
 # 3. Export a complete deployment bundle (firewalls, Mihomo skeleton, Cam-Gate, SSH drop-in, systemd Lifelines)
 ./bin/starhub render --out-dir ./dist
 
-# 4. Run the 7-dimension static EGM 3.0 gate (zero network calls, runs in <0.5s)
+# 4. Run the 7-dimension static EGM 3.0 gate & 2,000-iteration fuzz suite (zero network calls)
 ./bin/starhub doctor --local-docs-only
+python3 ./tests/fuzz_starhub_ctl.py --iterations 2000
 
 # 5. Install the Git pre-commit guardrail
 cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
