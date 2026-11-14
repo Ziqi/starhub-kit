@@ -17,12 +17,16 @@ Edit one machine-readable topology file ([STARHUB_GROUND_TRUTH.json](./STARHUB_G
 ### Try in 10 Seconds (Zero Root, Zero Disk Writes)
 
 ```bash
-# Option A — Clone & preview modular Mihomo or AI-sandbox rules directly to stdout (no root required)
+# Option A — One-command install via official Homebrew tap (macOS & Linuxbrew)
+brew install Ziqi/tap/starhub-kit
+starhub render --profile minimal --only mihomo --dry-run
+
+# Option B — Clone & preview modular Mihomo or AI-sandbox rules directly to stdout (no root required)
 git clone https://github.com/Ziqi/starhub-kit.git && cd starhub-kit
 ./bin/starhub render --profile minimal --only mihomo --dry-run
 ./bin/starhub render --only ai-sandbox --dry-run
 
-# Option B — Run directly via Nix Flake without cloning
+# Option C — Run directly via Nix Flake without cloning
 nix run github:Ziqi/starhub-kit -- render --profile minimal --only mihomo --dry-run
 ```
 
@@ -131,10 +135,13 @@ python3 scripts/starhub-doctor.py \
 ## Security, OSPS Baseline L3 & Supply-Chain Assurance
 
 [![Supply-Chain Attestations](https://github.com/Ziqi/starhub-kit/actions/workflows/attestation.yml/badge.svg)](https://github.com/Ziqi/starhub-kit/attestations)
+[![OSPS Baseline L3](https://img.shields.io/badge/OpenSSF%20OSPS-Baseline%20L3-007ec6.svg)](./SECURITY.md#6-openssf-osps-baseline-level-3-alignment--reproducible-builds)
 [![StarHub EGM 3.0 CI](https://github.com/Ziqi/starhub-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/Ziqi/starhub-kit/actions/workflows/ci.yml)
 [![CodeQL SAST](https://github.com/Ziqi/starhub-kit/actions/workflows/codeql.yml/badge.svg)](https://github.com/Ziqi/starhub-kit/actions/workflows/codeql.yml)
 [![SBOM: SPDX 2.3](https://img.shields.io/badge/SBOM-SPDX%202.3-00599C.svg)](https://github.com/Ziqi/starhub-kit/releases/latest)
 [![REUSE 3.2](https://img.shields.io/badge/REUSE-3.2%20SPDX-brightgreen.svg)](https://reuse.software/)
+[![Homebrew Tap](https://img.shields.io/badge/Homebrew-Ziqi%2Ftap-FBB040.svg?logo=homebrew&logoColor=white)](https://github.com/Ziqi/homebrew-tap)
+[![SWHID](https://img.shields.io/badge/SWHID-swh%3A1%3Asnp%3Ae4eeb16e-e20026.svg)](https://archive.softwareheritage.org/swh:1:snp:e4eeb16e7cac5969e38072612578d061e9370e93)
 
 Every release and `main` build publishes a **Sigstore + GitHub OIDC `SLSA Build Level 3` provenance certificate**, an **ISO/IEC 5962 (`SPDX-2.3`) SBOM**, a **bit-for-bit reproducible source archive (`mtime=0`, `uid/gid=0`)**, and an offline **Ed25519 signature**, audited under [OpenSSF Best Practices `Silver` (`#16658`)](https://www.bestpractices.dev/projects/16658) and aligned with [OpenSSF OSPS Baseline (Level 3)](./SECURITY.md#6-openssf-osps-baseline-level-3-alignment--reproducible-builds):
 

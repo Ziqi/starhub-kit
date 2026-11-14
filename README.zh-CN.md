@@ -17,12 +17,16 @@
 ### 10 秒免安装 / 无特权预览体验（零写盘、无需 Root）
 
 ```bash
-# 方式一：克隆后直接在终端预览单个子模块（如仅看 Mihomo 分流或 AI 沙箱防火墙，0 文件写入）
+# 方式一：通过官方 Homebrew Tap 一键安装（macOS 与 Linuxbrew 通用）
+brew install Ziqi/tap/starhub-kit
+starhub render --profile minimal --only mihomo --dry-run
+
+# 方式二：克隆后直接在终端预览单个子模块（如仅看 Mihomo 分流或 AI 沙箱防火墙，0 文件写入）
 git clone https://github.com/Ziqi/starhub-kit.git && cd starhub-kit
 ./bin/starhub render --profile minimal --only mihomo --dry-run
 ./bin/starhub render --only ai-sandbox --dry-run
 
-# 方式二：通过 Nix Flake 免克隆单行直接运行
+# 方式三：通过 Nix Flake 免克隆单行直接运行
 nix run github:Ziqi/starhub-kit -- render --profile minimal --only mihomo --dry-run
 ```
 
@@ -93,10 +97,13 @@ cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 ## 安全合规、OSPS Baseline L3 与可重现构建验真
 
 [![Supply-Chain Attestations](https://github.com/Ziqi/starhub-kit/actions/workflows/attestation.yml/badge.svg)](https://github.com/Ziqi/starhub-kit/attestations)
+[![OSPS Baseline L3](https://img.shields.io/badge/OpenSSF%20OSPS-Baseline%20L3-007ec6.svg)](./SECURITY.md#6-openssf-osps-baseline-level-3-alignment--reproducible-builds)
 [![StarHub EGM 3.0 CI](https://github.com/Ziqi/starhub-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/Ziqi/starhub-kit/actions/workflows/ci.yml)
 [![CodeQL SAST](https://github.com/Ziqi/starhub-kit/actions/workflows/codeql.yml/badge.svg)](https://github.com/Ziqi/starhub-kit/actions/workflows/codeql.yml)
 [![SBOM: SPDX 2.3](https://img.shields.io/badge/SBOM-SPDX%202.3-00599C.svg)](https://github.com/Ziqi/starhub-kit/releases/latest)
 [![REUSE 3.2](https://img.shields.io/badge/REUSE-3.2%20SPDX-brightgreen.svg)](https://reuse.software/)
+[![Homebrew Tap](https://img.shields.io/badge/Homebrew-Ziqi%2Ftap-FBB040.svg?logo=homebrew&logoColor=white)](https://github.com/Ziqi/homebrew-tap)
+[![SWHID](https://img.shields.io/badge/SWHID-swh%3A1%3Asnp%3Ae4eeb16e-e20026.svg)](https://archive.softwareheritage.org/swh:1:snp:e4eeb16e7cac5969e38072612578d061e9370e93)
 
 本项目已获颁 **[OpenSSF Best Practices `Silver`（银牌 · `#16658`）](https://www.bestpractices.dev/projects/16658)** 认证并全面对齐 **[OpenSSF OSPS Baseline (Level 3)](./SECURITY.md#6-openssf-osps-baseline-level-3-alignment--reproducible-builds)**，每次发布均自动签发 **Sigstore + GitHub OIDC `SLSA Build Level 3` 溯源证书**、**ISO/IEC 5962 (`SPDX-2.3`) SBOM**、**逐比特确定性可重现源码包（`mtime=0`, `uid/gid=0`）** 与 **Ed25519 离线数字签名**：
 
