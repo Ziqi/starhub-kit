@@ -1,6 +1,6 @@
 # StarHub Kit 全域统一变更与故障闭环主台账 (`STARHUB-LEDGER`)
 
-> **版本**：`StarHub Kit v1.1.0`  
+> **版本**：`StarHub Kit v1.2.0`  
 > **设计原则**：告别在多份零散文档中重复抄写流水的传统做法，一切**架构演进 `[UPD]`**、**缺陷根因闭环 `[BUGFIX]`** 与**算力工作站专项变更 `[WORKSTATION]`** 均按时间倒序（Append-Only，最新在最上方）统一追加于本账本。  
 > **关联索引**：
 > - 静态机器事实源（SSOT）：[STARHUB_GROUND_TRUTH.json](../../STARHUB_GROUND_TRUTH.json) · [mihomo-shared-guardrails.yaml](../../scripts/profiles/mihomo-shared-guardrails.yaml)
@@ -13,6 +13,7 @@
 
 | 条目 ID | 标签 | 日期 | 涉及模块 | 一句话摘要 |
 |---|---|---|---|---|
+| [UPD-20261114-002](#upd-20261114-002) | `[UPD][UX][SECURITY]` | 2026-11-14 | `starhub-ctl` / `README` / `SECURITY` / `flake.nix` | **StarHub Kit `v1.2.0` 模块化无特权预览（`--only` + `--dry-run`）、逐比特可重现归档（`archive --verify`）、原生 Nix Flake 与 OSPS Baseline L3 对齐发布**：降低外部上手门槛，首屏去内部代号化并内嵌 15 秒高清矢量终端动图 |
 | [UPD-20261114-001](#upd-20261114-001) | `[UPD][UX][OSS]` | 2026-11-14 | `profiles` / `starhub-ctl` / `docs` | **StarHub Kit `v1.1.0` 三级轻量化接入矩阵与英文协议排障手册发布**：新增零编译即贴即用规则包 `standalone-mihomo-tailscale-guardrails.yaml`、`StarHub Lite` 单网关极简模板（`--profile minimal`）及英文核心协议深潜手册 `ARCHITECTURE-AND-PLAYBOOK-EN.md` |
 | [UPD-20261113-004](#upd-20261113-004) | `[UPD][SECURITY][OSS]` | 2026-11-13 | 全仓拓扑 / `README` / `starhub-ctl` / `starhub-doctor` | **StarHub Kit `v1.0.3` 获颁 OpenSSF Silver 银牌认证（`#16658`）、全量角色化去指纹重构与移动端 Gmail `Section 9a` 前置规则同步**：正式挂载 OpenSSF Best Practices `Silver` 徽章（`200%`），将全部节点/IoT/出口重构为通用中立工程角色，补齐移动端 Gmail 内嵌图/附件 `UDP/443 REJECT` 前置防遮蔽母版，并升级 `--verify-public-export` 硬件画像反泄露门禁 |
 | [UPD-20261113-003](#upd-20261113-003) | `[UPD][SECURITY][OSS]` | 2026-11-13 | `.github` / `scripts` / `tests` / `GOVERNANCE.md` | **StarHub Kit `v1.0.2` SLSA Level 3 证书、SPDX 2.3 SBOM 与 OpenSSF Silver 银牌基线落地**：新增 Sigstore OIDC `SLSA Build Level 3` 构建溯源证书工作流、`SPDX-2.3` SBOM 生成器、`fsfe/reuse-action` 强校验、`SECURITY-INSIGHTS.yml`、`GOVERNANCE.md` / `CODE_OF_CONDUCT.md` 及 `>=80%` 语句覆盖率 CI 门禁 |
@@ -23,6 +24,16 @@
 ---
 
 ## 二、详细变更与闭环流水（Chronological Details · Newest First）
+
+### UPD-20261114-002
+- **标题**：`[UPD][UX][SECURITY]` StarHub Kit `v1.2.0` 模块化无特权预览（`--only` / `--dry-run`）、逐比特可重现归档（`archive --verify`）、原生 Nix Flake 与 OSPS Baseline L3 完整对齐
+- **日期**：`2026-11-14`
+- **核心交付清单**：
+  1. **模块化无特权标准输出预览（`render --only` & `--dry-run`）**：支持按 `firewall`、`mihomo`、`ai-sandbox`、`lifeline` 独立筛选编译切片，并支持零写盘、无需 Root 权限的 `--dry-run` 终端秒级预览。
+  2. **逐比特可重现构建（`archive --verify` / `--verify-file`）与 Nix Flake（[flake.nix](../../flake.nix)）**：固定 PAX 归档头 `mtime=0`、`uid/gid=0` 与字典序排列，实现跨平台 SHA-256 逐字节可复核；内置零依赖 `flake.nix` 支持 `nix run github:Ziqi/starhub-kit` 免克隆单行运行。
+  3. **首屏转化漏斗重构与 OpenSSF OSPS Baseline (Level 3) 映射**：精简中英文 `README` 首屏至 4 枚核心徽章，移除首段内部代号认知门槛，嵌入 15 秒纯矢量终端演示 SVG（`assets/terminal-demo.svg`），并在 [SECURITY.md](../../SECURITY.md) 第 6 节补齐 OSPS Baseline L3 八大控制域证据矩阵。
+
+---
 
 ### UPD-20261114-001
 - **标题**：`[UPD][UX][OSS]` StarHub Kit `v1.1.0` 三级渐进轻量化版本（`Tier 0` 免编译规则包 + `Tier 1` 单网关 `minimal` 模板）与英文协议排障手册上线

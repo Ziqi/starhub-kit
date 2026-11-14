@@ -74,13 +74,14 @@ def exercise_suite(ctl_mod, temp_root: pathlib.Path) -> None:
         "REUSE.toml",
         "CITATION.cff",
         "LICENSE",
+        "flake.nix",
     ):
         src = REPO_ROOT / item
         if src.is_file():
             shutil.copy2(src, temp_root / item)
     for link_name in ("CLAUDE.md", "GROK.md"):
         (temp_root / link_name).symlink_to("AGENTS.md")
-    for sub_dir in ("docs", "scripts", "bin", "templates", "LICENSES", "profiles", ".github"):
+    for sub_dir in ("docs", "scripts", "bin", "templates", "LICENSES", "profiles", ".github", "assets"):
         shutil.copytree(REPO_ROOT / sub_dir, temp_root / sub_dir)
 
     buf_out, buf_err = io.StringIO(), io.StringIO()
@@ -126,14 +127,79 @@ def exercise_suite(ctl_mod, temp_root: pathlib.Path) -> None:
         assert (min_bundle / "mihomo-gateway.yaml").is_file()
         assert not (min_bundle / "starhub-dash-fw.sh").exists()
 
-        # 4. CLI main() dispatch across subcommands (init, render, export-workstation, doctor)
+        # 4. Modular --only + --dry-run + reproducible archive verification
+        for mod_name in ("mihomo", "firewall", "ai-sandbox", "lifeline"):
+            assert (
+                ctl_mod.cmd_render(
+                    temp_root,
+                    check_only=False,
+                    in_place=False,
+                    out_dir=None,
+                    profile="full",
+                    only_module=mod_name,
+                    dry_run=True,
+                )
+                == 0
+            )
+        # Dry-run empty match branch (minimal omits optional ai-sandbox)
+        assert (
+            ctl_mod.cmd_render(
+                temp_root,
+                check_only=False,
+                in_place=False,
+                out_dir=None,
+                profile="minimal",
+                only_module="ai-sandbox",
+                dry_run=True,
+            )
+            == 0
+        )
+
+        # Reproducible archive build, verify & mismatch detection
+        tar_out = temp_root / "dist_test" / "repro-test.tar.gz"
+        assert ctl_mod.cmd_archive(temp_root, output=None, prefix="starhub-kit", verify=True) == 0
+        assert ctl_mod.cmd_archive(temp_root, output=tar_out, prefix="starhub-kit-v1.2.0", verify=True) == 0
+        assert (
+            ctl_mod.cmd_archive(
+                temp_root,
+                output=None,
+                prefix="starhub-kit-v1.2.0",
+                verify=False,
+                verify_file=tar_out,
+            )
+            == 0
+        )
+        assert (
+            ctl_mod.cmd_archive(
+                temp_root,
+                output=None,
+                prefix="wrong-prefix",
+                verify=False,
+                verify_file=tar_out,
+            )
+            == 1
+        )
+        assert (
+            ctl_mod.cmd_archive(
+                temp_root,
+                output=None,
+                prefix="starhub-kit",
+                verify=False,
+                verify_file=temp_root / "nonexistent.tar.gz",
+            )
+            == 1
+        )
+
+        # 5. CLI main() dispatch across subcommands (init, render, archive, export-workstation, doctor)
         orig_argv = sys.argv[:]
         try:
             min_dir = temp_root / "dist_min_test"
             for argv in (
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "init"],
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "render", "--check"],
+                ["starhub-ctl.py", "--repo-root", str(temp_root), "render", "--profile", "minimal", "--only", "mihomo", "--dry-run"],
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "render", "--profile", "minimal", "--out-dir", str(min_dir)],
+                ["starhub-ctl.py", "--repo-root", str(temp_root), "archive", "--verify"],
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "export-workstation"],
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "doctor", "--local-docs-only"],
             ):

@@ -35,7 +35,7 @@ jobs:
       - name: Build deterministic release archive & SPDX-2.3 SBOM
         run: |
           mkdir -p ./artifacts
-          git archive --format=tar.gz --prefix=starhub-kit/ HEAD > ./artifacts/starhub-kit-bundle.tar.gz
+          ./bin/starhub archive --prefix starhub-kit --output ./artifacts/starhub-kit-bundle.tar.gz --verify
           python3 ./scripts/generate-sbom.py --version "${GITHUB_REF_NAME:-main}" --output ./artifacts/starhub-kit.spdx.json
           sha256sum ./artifacts/starhub-kit-bundle.tar.gz ./artifacts/starhub-kit.spdx.json
 

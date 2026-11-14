@@ -1,6 +1,6 @@
 # StarHub Kit 全智能体与运维总入口 (`AGENTS.md`)
 
-> **版本**：`v1.1.0`（软件规范对齐 `StarHub Home OS v2.0-spec`） · **权威性声明**：本文件是 `starhub-kit` 唯一根级指令入口（根目录 `CLAUDE.md` 与 `GROK.md` 均为指向本文件的 POSIX 软链接，彻底杜绝多入口分裂）。机器可读唯一事实源位于 [STARHUB_GROUND_TRUTH.json](STARHUB_GROUND_TRUTH.json)。
+> **版本**：`v1.2.0`（软件规范对齐 `StarHub Home OS v2.0-spec`） · **权威性声明**：本文件是 `starhub-kit` 唯一根级指令入口（根目录 `CLAUDE.md` 与 `GROK.md` 均为指向本文件的 POSIX 软链接，彻底杜绝多入口分裂）。机器可读唯一事实源位于 [STARHUB_GROUND_TRUTH.json](STARHUB_GROUND_TRUTH.json)。
 
 ---
 

@@ -33,9 +33,11 @@ jobs:
       - name: Verify compiler parity (zero drift vs STARHUB_GROUND_TRUTH.json)
         run: ./bin/starhub render --check
 
-      - name: Render full deployment bundle, SPDX-2.3 SBOM & check shell syntax
+      - name: Render full deployment bundle, modular dry-run, reproducible archive, SBOM & check shell syntax
         run: |
+          ./bin/starhub render --profile minimal --only mihomo --dry-run > /dev/null
           ./bin/starhub render --out-dir ./dist
+          ./bin/starhub archive --verify
           python3 ./scripts/generate-sbom.py --version ci-check --output ./dist/starhub-kit.spdx.json
           bash -n ./bin/starhub ./scripts/*.sh ./dist/*.sh
 

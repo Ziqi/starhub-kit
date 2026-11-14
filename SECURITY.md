@@ -35,7 +35,7 @@ When granting cloud AI agents (such as ephemeral container sandboxes) read/actio
   ```
   ```bash
   openssl pkeyutl -verify -pubin -inkey release_ed25519_pub.pem \
-    -rawin -in starhub-kit-v1.1.0.tar.gz -sigfile starhub-kit-v1.1.0.tar.gz.sig
+    -rawin -in starhub-kit-v1.2.0.tar.gz -sigfile starhub-kit-v1.2.0.tar.gz.sig
   ```
 - **SPDX / REUSE 3.2**: All source scripts carry standard SPDX `MIT` license and copyright headers, with repository-wide machine-readable licensing declared in `REUSE.toml`, license text in `LICENSES/MIT.txt`, and citation metadata in `CITATION.cff`.
 - **OpenSSF Best Practices `Silver` Certification (`Project #16658`)**: `starhub-kit` holds an active **OpenSSF Best Practices `Silver`** badge (`tiered_percentage = 200%`: `67/67 Passing` + `55/55 Silver`), publicly verifiable at `https://www.bestpractices.dev/projects/16658` (`https://www.bestpractices.dev/projects/16658.json`).
@@ -56,4 +56,28 @@ To satisfy **OpenSSF Best Practices (Silver)** security design review (`security
 | **TB-2: Dual-Stack Gateway (`gw`) -> Public Internet** | LAN client leaks unproxied IPv6 traffic when `gw` acts as Tailscale Exit Node, or DNS `fallback:` racing leaks split-horizon queries. | `STARHUB-IPV6-EXIT-GUARD` drops non-allowed forward IPv6 egress; `mihomo-config-backup.yaml` disables `fallback:` and enforces `respect-rules: true` + deterministic `nameserver-policy`. Asserted in `DIM6-MIHOMO-GUARD`. |
 | **TB-3: Commercial IoT Camera -> Vendor Cloud** | Closed-source camera firmware streams audio/video to external cloud despite app-level "privacy mode". | Kernel-level `cam-gate.sh off` inserts `iptables -t mangle -I FORWARD 1 -s <cam_ip> -o Meta -j DROP` at the gateway while keeping local LAN RTSP reachable. |
 | **TB-4: Private Production Repo -> Public Open-Source Kit** | Operator accidentally commits real WAN/LAN/Tailscale IPs, MACs, `.env` secrets, or private keys during public export. | `DIM4-SECRET-GUARD` blocks `.env` and PEM key headers; `--verify-public-export` extracts all sensitive tokens from private SSOT and scans both working tree and `git log -p --all` with zero-tolerance exit code `1`. |
-| **TB-5: CI/CD & Release Supply Chain** | Upstream GitHub Action tag hijacking or tampered release archive distribution. | 40-char SHA pinning (`Pinned-Dependencies = 10/10`), zero `contents: write` workflow tokens (`Token-Permissions = 10/10`), GitHub OIDC + Sigstore `SLSA Build Level 3` X.509 attestations (`/attestations`), SPDX-2.3 SBOM, and detached Ed25519 `.sig` + `.intoto.jsonl` bundles. |
+| **TB-5: CI/CD & Release Supply Chain** | Upstream GitHub Action tag hijacking or tampered release archive distribution. | 40-char SHA pinning (`Pinned-Dependencies = 10/10`), zero `contents: write` workflow tokens (`Token-Permissions = 10/10`), GitHub OIDC + Sigstore `SLSA Build Level 3` X.509 attestations (`/attestations`), SPDX-2.3 SBOM, bit-for-bit deterministic tarball builder (`./bin/starhub archive --verify`), and detached Ed25519 `.sig` + `.intoto.jsonl` bundles. |
+
+## 6. OpenSSF OSPS Baseline (Level 3) Alignment & Reproducible Builds
+
+In addition to holding **OpenSSF Best Practices `Silver` (`#16658`)**, `starhub-kit` aligns with the **OpenSSF Open Source Project Security (OSPS) Baseline (Maturity Level 3)** and EU Cyber Resilience Act (CRA) supply-chain readiness controls:
+
+| OSPS Baseline Domain | Maturity Control | Verifiable Evidence in `starhub-kit` |
+|---|---|---|
+| **Access Control (`OSPS-AC`)** | MFA enforcement, protected `main` branch ruleset, and mandatory code-owner path rules | `.github/CODEOWNERS`, GitHub protected-branch PR CI gates (`egm-verify` + `CodeQL`), zero workflow `contents: write` tokens |
+| **Build & Release (`OSPS-BR`)** | SLSA Build Level 3 provenance, cryptographic signing, and **Bit-for-Bit Reproducible Builds** | `.github/workflows/attestation.yml` (`actions/attest-build-provenance`), Ed25519 `.sig` + `.intoto.jsonl`, and `./bin/starhub archive --verify` (`mtime=0`, `uid/gid=0`, lexicographical PAX ordering) |
+| **Documentation (`OSPS-DO`)** | Machine-readable Security Insights (`v2.0.0`), user/architecture playbooks, and bilingual security guides | `.github/security-insights.yml`, `docs/ARCHITECTURE-AND-PLAYBOOK-EN.md`, `README.md` / `README.zh-CN.md` |
+| **Governance (`OSPS-GV`)** | Explicit maintainer roles, DCO contribution sign-off, and single-maintainer bus-factor continuity plan | `GOVERNANCE.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` |
+| **Legal & SBOM (`OSPS-LE`)** | Machine-auditable per-file SPDX licensing (`REUSE 3.2`) and automated release SBOM (`SPDX-2.3`) | `REUSE.toml`, `LICENSES/MIT.txt`, `scripts/generate-sbom.py`, `actions/attest-sbom` |
+| **Quality (`OSPS-QA`)** | Automated regression CI, `>=80%` statement coverage gate, and zero third-party runtime dependencies | `.github/workflows/ci.yml`, `tests/test_coverage_gate.py`, `./bin/starhub render --check` |
+| **Security Assessment (`OSPS-SA`)** | Continuous SAST, dual-mode coverage/property fuzzing, and documented architecture threat model | `.github/workflows/codeql.yml`, `tests/fuzz_starhub_ctl.py` (Google `atheris` + 2,000-iter invariant fuzzing), Section 5 Threat Model |
+| **Vulnerability Management (`OSPS-VM`)** | Private coordinated disclosure channel, explicit acknowledgement/remediation SLAs, and Dependabot monitoring | GitHub Private Security Advisories (Section 4: 48h ack / 14d fix / 90d embargo), `.github/dependabot.yml` |
+
+### Verifying Bit-for-Bit Reproducible Release Archives
+
+Every `starhub-kit-v*.tar.gz` release archive is built via `./bin/starhub archive` with normalized PAX headers (`mtime=0`, `uid=0`, `gid=0`, empty `uname`/`gname`, deterministic POSIX permissions, and `gzip` `mtime=0`). Any third party can check out the release tag on Linux or macOS and verify byte-for-byte reproducibility without root privileges:
+
+```bash
+git checkout v1.2.0
+./bin/starhub archive --verify-file ./starhub-kit-v1.2.0.tar.gz --prefix starhub-kit-v1.2.0
+```

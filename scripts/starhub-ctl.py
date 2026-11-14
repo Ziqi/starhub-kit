@@ -6,13 +6,16 @@ StarHub Declarative Topology Compiler & Toolkit CLI (starhub-ctl.py)
 Zero third-party dependencies (Python 3.9+ stdlib only).
 
 Subcommands:
-  init [--force]
-      Initialize STARHUB_GROUND_TRUTH.json from topology.example.json if absent.
-  render [--check | --in-place | --out-dir <dir>]
+  init [--force] [--profile full|minimal]
+      Initialize STARHUB_GROUND_TRUTH.json from full or minimal template.
+  render [--profile full|minimal] [--only all|firewall|mihomo|ai-sandbox|lifeline]
+         [--check | --in-place | --out-dir <dir> | --dry-run]
       Deterministically compile dual-stack firewall scripts, Cloud Agent B2
       sandbox bootstrap, Mihomo shared guardrails, gateway config skeleton,
       camera cloud kill-switch, SSH config drop-in, and Lifeline systemd units
-      from STARHUB_GROUND_TRUTH.json.
+      from STARHUB_GROUND_TRUTH.json (or preview to stdout via --dry-run).
+  archive [--output <tar.gz>] [--prefix <dir>] [--verify] [--verify-file <tar.gz>]
+      Build or verify a bit-for-bit reproducible source tarball (mtime=0, uid/gid=0).
   doctor [extra args...]
       Run StarHub EGM 3.0 zero-drift & zero-PII verification harness.
   export-workstation
@@ -22,12 +25,16 @@ Subcommands:
 from __future__ import annotations
 
 import argparse
+import gzip
+import hashlib
+import io
 import json
 import os
 import pathlib
 import shutil
 import subprocess
 import sys
+import tarfile
 
 DEFAULT_REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -993,17 +1000,72 @@ def cmd_init(repo_root: pathlib.Path, force: bool, profile: str = "full") -> int
     return 0
 
 
+def _build_bundle_dict(gt: dict) -> dict[str, tuple[str, int]]:
+    nodes = gt.get("nodes", {}) if isinstance(gt.get("nodes"), dict) else {}
+    is_minimal = gt.get("deployment_tier") == "minimal"
+    bundle: dict[str, tuple[str, int]] = {
+        "starhub-ts-mss-clamp.sh": (render_gw_ts_mss_clamp(gt), 0o755),
+        "profiles/mihomo-shared-guardrails.yaml": (render_mihomo_guardrails(gt), 0o644),
+        "profiles/standalone-mihomo-tailscale-guardrails.yaml": (
+            render_standalone_mihomo_guardrails(gt),
+            0o644,
+        ),
+        "mihomo-gateway.yaml": (render_mihomo_gateway_skeleton(gt), 0o600),
+        "ssh_config.starhub": (render_ssh_config(gt), 0o644),
+    }
+    if not is_minimal or "panel" in nodes:
+        bundle["starhub-dash-fw.sh"] = (render_dash_fw(gt), 0o755)
+    if not is_minimal or "home" in nodes:
+        bundle["starhub-home-fw.sh"] = (render_home_fw(gt), 0o755)
+    if not is_minimal or "agent_sandbox" in nodes:
+        bundle["agent-tailscale-bootstrap.sh"] = (render_agent_bootstrap(gt), 0o755)
+    if not is_minimal or "ip_camera" in (gt.get("smart_home_devices") or {}):
+        bundle["cam-gate.sh"] = (render_cam_gate(gt), 0o755)
+    if "derp" in nodes:
+        for unit_name, unit_body in render_lifeline_units(gt).items():
+            bundle[f"systemd/{unit_name}"] = (unit_body, 0o644)
+    return bundle
+
+
+def _filter_by_module(
+    items: dict[str, tuple[str, int]], only_module: str
+) -> dict[str, tuple[str, int]]:
+    if only_module == "all":
+        return items
+    filtered: dict[str, tuple[str, int]] = {}
+    for rel, val in items.items():
+        match = False
+        if only_module == "mihomo":
+            match = "mihomo" in rel
+        elif only_module == "firewall":
+            match = any(tok in rel for tok in ("-fw.sh", "mss-clamp.sh", "cam-gate.sh"))
+        elif only_module == "ai-sandbox":
+            match = any(
+                tok in rel
+                for tok in ("agent-tailscale-bootstrap.sh", "starhub-dash-fw.sh", "starhub-home-fw.sh")
+            )
+        elif only_module == "lifeline":
+            match = "ssh_config.starhub" in rel or "systemd/" in rel
+        if match:
+            filtered[rel] = val
+    return filtered
+
+
 def cmd_render(
     repo_root: pathlib.Path,
     check_only: bool,
     in_place: bool,
     out_dir: pathlib.Path | None,
     profile: str = "full",
+    only_module: str = "all",
+    dry_run: bool = False,
 ) -> int:
     if profile == "minimal" and not check_only and not in_place:
         gt_path = _resolve_profile_template(repo_root, "minimal")
     else:
         gt_path = repo_root / "STARHUB_GROUND_TRUTH.json"
+        if dry_run and not gt_path.is_file():
+            gt_path = _resolve_profile_template(repo_root, "full")
     if not gt_path.is_file():
         print(f"ERROR: {gt_path} not found. Run 'starhub init' first.", file=sys.stderr)
         return 1
@@ -1030,54 +1092,153 @@ def cmd_render(
         )
         return 0
 
+    if dry_run:
+        preview_items = _filter_by_module(_build_bundle_dict(gt), only_module)
+        if not preview_items:
+            print(
+                f"# [starhub-ctl] No artifacts matched --only={only_module} under profile={profile} "
+                f"(pass --profile full to preview optional sandbox/DERP modules)."
+            )
+            return 0
+        for rel, (content, mode) in preview_items.items():
+            print(
+                f"# === [DRY-RUN PREVIEW] {rel} (mode=0o{mode:o}, profile={profile}, only={only_module}) ==="
+            )
+            print(normalize_lf(content).rstrip("\n"))
+            print()
+        print(
+            f"# [starhub-ctl] Dry-run preview complete: {len(preview_items)} artifact(s) rendered to stdout (0 files written, non-root safe)."
+        )
+        return 0
+
     if in_place:
-        for rel, (content, mode) in targets.items():
+        selected_targets = _filter_by_module(targets, only_module)
+        for rel, (content, mode) in selected_targets.items():
             fp = repo_root / rel
             fp.parent.mkdir(parents=True, exist_ok=True)
             fp.write_text(normalize_lf(content), encoding="utf-8")
             os.chmod(fp, mode)
-        print(f"[starhub-ctl] Rendered {len(targets)} canonical files in-place under {repo_root}.")
+        print(f"[starhub-ctl] Rendered {len(selected_targets)} canonical files in-place under {repo_root}.")
         return 0
 
     default_dir_name = "dist-minimal" if (profile == "minimal" or gt.get("deployment_tier") == "minimal") else "dist"
     dest = (out_dir or (repo_root / default_dir_name)).resolve()
     dest.mkdir(parents=True, exist_ok=True)
-    nodes = gt.get("nodes", {}) if isinstance(gt.get("nodes"), dict) else {}
-    is_minimal = gt.get("deployment_tier") == "minimal"
-    bundle: dict[str, tuple[str, int]] = {
-        "starhub-ts-mss-clamp.sh": (render_gw_ts_mss_clamp(gt), 0o755),
-        "profiles/mihomo-shared-guardrails.yaml": (render_mihomo_guardrails(gt), 0o644),
-        "profiles/standalone-mihomo-tailscale-guardrails.yaml": (
-            render_standalone_mihomo_guardrails(gt),
-            0o644,
-        ),
-        "mihomo-gateway.yaml": (render_mihomo_gateway_skeleton(gt), 0o600),
-        "ssh_config.starhub": (render_ssh_config(gt), 0o644),
-    }
-    if not is_minimal or "panel" in nodes:
-        bundle["starhub-dash-fw.sh"] = (render_dash_fw(gt), 0o755)
-    if not is_minimal or "home" in nodes:
-        bundle["starhub-home-fw.sh"] = (render_home_fw(gt), 0o755)
-    if not is_minimal or "agent_sandbox" in nodes:
-        bundle["agent-tailscale-bootstrap.sh"] = (render_agent_bootstrap(gt), 0o755)
-    if not is_minimal or "ip_camera" in (gt.get("smart_home_devices") or {}):
-        bundle["cam-gate.sh"] = (render_cam_gate(gt), 0o755)
-    if "derp" in nodes:
-        for unit_name, unit_body in render_lifeline_units(gt).items():
-            bundle[f"systemd/{unit_name}"] = (unit_body, 0o644)
+    bundle = _filter_by_module(_build_bundle_dict(gt), only_module)
 
     for rel, (content, mode) in bundle.items():
         fp = dest / rel
         fp.parent.mkdir(parents=True, exist_ok=True)
         fp.write_text(normalize_lf(content), encoding="utf-8")
         os.chmod(fp, mode)
-    print(f"[starhub-ctl] Rendered {len(bundle)} deployment artifacts into {dest} (profile={profile})")
+    print(
+        f"[starhub-ctl] Rendered {len(bundle)} deployment artifacts into {dest} (profile={profile}, only={only_module})"
+    )
+    return 0
+
+
+def build_reproducible_tarball_bytes(
+    repo_root: pathlib.Path, prefix: str = "starhub-kit"
+) -> tuple[bytes, int]:
+    skip_dirs = {".git", "__pycache__", "node_modules", ".next", "dist", "dist-minimal", ".pytest_cache"}
+    entries: list[tuple[str, pathlib.Path]] = []
+    for root, dirs, files in os.walk(repo_root, followlinks=False):
+        dirs[:] = sorted(
+            d for d in dirs if d not in skip_dirs and not d.startswith("dist_")
+        )
+        rp = pathlib.Path(root)
+        for name in sorted(files):
+            if name.endswith((".pyc", ".pyo")):
+                continue
+            fp = rp / name
+            rel = fp.relative_to(repo_root).as_posix()
+            entries.append((rel, fp))
+        for dname in list(dirs):
+            dp = rp / dname
+            if dp.is_symlink():
+                rel = dp.relative_to(repo_root).as_posix()
+                entries.append((rel, dp))
+                dirs.remove(dname)
+
+    entries.sort(key=lambda item: item[0])
+    clean_prefix = prefix.strip("/") or "starhub-kit"
+    raw_buf = io.BytesIO()
+    with gzip.GzipFile(filename="", mode="wb", fileobj=raw_buf, compresslevel=9, mtime=0) as gz:
+        with tarfile.open(mode="w", fileobj=gz, format=tarfile.PAX_FORMAT) as tf:
+            for rel, fp in entries:
+                arcname = f"{clean_prefix}/{rel}"
+                ti = tarfile.TarInfo(name=arcname)
+                ti.mtime = 0
+                ti.uid = 0
+                ti.gid = 0
+                ti.uname = ""
+                ti.gname = ""
+                ti.pax_headers = {}
+                if fp.is_symlink():
+                    ti.type = tarfile.SYMTYPE
+                    ti.linkname = os.readlink(fp)
+                    ti.mode = 0o777
+                    tf.addfile(ti)
+                elif fp.is_file():
+                    data = fp.read_bytes()
+                    ti.type = tarfile.REGTYPE
+                    ti.size = len(data)
+                    ti.mode = 0o755 if os.access(fp, os.X_OK) else 0o644
+                    tf.addfile(ti, io.BytesIO(data))
+    return raw_buf.getvalue(), len(entries)
+
+
+def cmd_archive(
+    repo_root: pathlib.Path,
+    output: pathlib.Path | None,
+    prefix: str,
+    verify: bool,
+    verify_file: pathlib.Path | None = None,
+) -> int:
+    bytes_a, file_count = build_reproducible_tarball_bytes(repo_root, prefix)
+    sha_a = hashlib.sha256(bytes_a).hexdigest()
+
+    if verify_file is not None:
+        if not verify_file.is_file():
+            print(f"[FAIL] [REPRODUCIBLE-BUILD] Archive not found: {verify_file}", file=sys.stderr)
+            return 1
+        actual_sha = hashlib.sha256(verify_file.read_bytes()).hexdigest()
+        if actual_sha != sha_a:
+            print(
+                f"[FAIL] [REPRODUCIBLE-BUILD] Digest mismatch for {verify_file}: expected {sha_a}, got {actual_sha}",
+                file=sys.stderr,
+            )
+            return 1
+        print(
+            f"[PASS] [REPRODUCIBLE-BUILD] {verify_file} matches source tree bit-for-bit (sha256={sha_a}, files={file_count})."
+        )
+        return 0
+
+    if verify:
+        bytes_b, _ = build_reproducible_tarball_bytes(repo_root, prefix)
+        sha_b = hashlib.sha256(bytes_b).hexdigest()
+        if bytes_a != bytes_b or sha_a != sha_b:
+            print("[FAIL] [REPRODUCIBLE-BUILD] Non-deterministic archive output detected!", file=sys.stderr)
+            return 1
+
+    if output is not None:
+        out_path = output.resolve()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_bytes(bytes_a)
+        print(
+            f"[PASS] [REPRODUCIBLE-BUILD] Wrote deterministic archive {out_path} (sha256={sha_a}, files={file_count}, mtime=0, uid/gid=0)."
+        )
+        return 0
+
+    print(
+        f"[PASS] [REPRODUCIBLE-BUILD] Bit-for-bit deterministic archive verified (sha256={sha_a}, files={file_count}, mtime=0, uid/gid=0)."
+    )
     return 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="StarHub 3.0 Declarative Compiler & Open-Source Toolkit CLI"
+        description="StarHub Declarative Compiler & Open-Source Toolkit CLI"
     )
     parser.add_argument(
         "--repo-root",
@@ -1093,10 +1254,23 @@ def main() -> int:
 
     p_render = sub.add_parser("render", help="Compile network/firewall/Mihomo/Lifeline artifacts from SSOT")
     p_render.add_argument("--profile", choices=("full", "minimal"), default="full", help="Render full SSOT or minimal single-gateway tier")
+    p_render.add_argument(
+        "--only",
+        choices=("all", "firewall", "mihomo", "ai-sandbox", "lifeline"),
+        default="all",
+        help="Compile or preview only a specific subsystem module",
+    )
     g_mode = p_render.add_mutually_exclusive_group()
     g_mode.add_argument("--check", action="store_true", help="Verify canonical repo scripts match SSOT with zero drift")
     g_mode.add_argument("--in-place", action="store_true", help="Update canonical scripts under scripts/ in-place")
     g_mode.add_argument("--out-dir", type=pathlib.Path, help="Output directory for rendered bundle (default: ./dist or ./dist-minimal)")
+    g_mode.add_argument("--dry-run", action="store_true", help="Preview rendered rules/scripts to stdout with zero disk writes or root privileges")
+
+    p_archive = sub.add_parser("archive", help="Build or verify a bit-for-bit reproducible source tarball")
+    p_archive.add_argument("--output", type=pathlib.Path, help="Write deterministic .tar.gz to this path")
+    p_archive.add_argument("--prefix", default="starhub-kit", help="Top-level directory prefix inside tarball")
+    p_archive.add_argument("--verify", action="store_true", help="Verify bit-for-bit determinism across independent builds")
+    p_archive.add_argument("--verify-file", type=pathlib.Path, help="Verify an existing .tar.gz byte-for-byte against the current source tree")
 
     sub.add_parser("doctor", help="Run StarHub EGM 3.0 zero-drift & zero-PII verification harness")
     sub.add_parser("export-workstation", help="Export [WORKSTATION] ledger entries")
@@ -1104,13 +1278,23 @@ def main() -> int:
     args, extra_args = parser.parse_known_args()
     repo_root = args.repo_root.resolve()
 
-    if args.subcommand in ("init", "render", "export-workstation") and extra_args:
+    if args.subcommand in ("init", "render", "archive", "export-workstation") and extra_args:
         parser.error(f"unrecognized arguments: {' '.join(extra_args)}")
 
     if args.subcommand == "init":
         return cmd_init(repo_root, args.force, args.profile)
     if args.subcommand == "render":
-        return cmd_render(repo_root, args.check, args.in_place, args.out_dir, args.profile)
+        return cmd_render(
+            repo_root,
+            args.check,
+            args.in_place,
+            args.out_dir,
+            args.profile,
+            args.only,
+            args.dry_run,
+        )
+    if args.subcommand == "archive":
+        return cmd_archive(repo_root, args.output, args.prefix, args.verify, args.verify_file)
     if args.subcommand == "export-workstation":
         doctor_script = repo_root / "scripts" / "starhub-doctor.py"
         return subprocess.call(

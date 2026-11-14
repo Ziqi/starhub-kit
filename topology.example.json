@@ -2,7 +2,7 @@
   "schema_version": "3.1.0",
   "repo_profile": "open_source_kit",
   "system_name": "StarHub Kit",
-  "system_version": "v1.1.0",
+  "system_version": "v1.2.0",
   "updated_at": "2026-11-14",
   "home_lan_cidr": "192.0.2.0/24",
   "admin_allowlist_nodes": [

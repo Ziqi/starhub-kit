@@ -3,8 +3,8 @@
 # OpenSSF Security Insights Specification (OSPS Baseline & OpenSSF Silver Certified)
 header:
   schema-version: 2.0.0
-  last-updated: '2026-11-13'
-  last-reviewed: '2026-11-13'
+  last-updated: '2026-11-14'
+  last-reviewed: '2026-11-14'
   url: https://github.com/Ziqi/starhub-kit
   project-sis-source: https://raw.githubusercontent.com/Ziqi/starhub-kit/main/.github/security-insights.yml
 
