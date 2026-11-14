@@ -80,7 +80,7 @@ def exercise_suite(ctl_mod, temp_root: pathlib.Path) -> None:
             shutil.copy2(src, temp_root / item)
     for link_name in ("CLAUDE.md", "GROK.md"):
         (temp_root / link_name).symlink_to("AGENTS.md")
-    for sub_dir in ("docs", "scripts", "bin", "templates", "LICENSES", "profiles"):
+    for sub_dir in ("docs", "scripts", "bin", "templates", "LICENSES", "profiles", ".github"):
         shutil.copytree(REPO_ROOT / sub_dir, temp_root / sub_dir)
 
     buf_out, buf_err = io.StringIO(), io.StringIO()

@@ -323,6 +323,7 @@
     "GROK.md": "AGENTS.md"
   },
   "allowed_active_markdown_files": [
+    ".github/PULL_REQUEST_TEMPLATE.md",
     "README.md",
     "README.zh-CN.md",
     "CONTRIBUTING.md",
