@@ -6,11 +6,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 > **Language**: **English** | [简体中文 (Simplified Chinese)](./README.zh-CN.md)  
-> **Version**: `v1.2.0` · **Runtime**: Python 3.9+ (Zero Third-Party Dependencies) · **Nix**: [`flake.nix`](./flake.nix) · **Assurance**: [OpenSSF Silver (`#16658`)](https://www.bestpractices.dev/projects/16658) + [OSPS Baseline L3](./SECURITY.md#6-openssf-osps-baseline-level-3-alignment--reproducible-builds)
+> **Version**: `v1.3.0` · **Runtime**: Python 3.9+ (Zero Third-Party Dependencies) · **MCP**: `starhub mcp` (`stdio`) · **Nix**: [`flake.nix`](./flake.nix) · **Assurance**: [OpenSSF Silver (`#16658`)](https://www.bestpractices.dev/projects/16658) + [OSPS Baseline L3](./SECURITY.md#6-openssf-osps-baseline-level-3-alignment--reproducible-builds)
 
-**StarHub Kit** is a zero-dependency declarative compiler for **multi-site Tailscale `100.x + 4via6` mesh routing, deterministic Mihomo (`Clash Meta`) split-DNS & precision QUIC governance, cloud AI sandbox dual-stack firewalls, and out-of-band SSH lifelines**.
+**StarHub Kit** is a zero-dependency **AI Agent sandbox firewall & cross-platform network policy compiler** for **Linux `nftables`/`iptables`, macOS Packet Filter (`pf`), official Tailscale `ACL JSON`, `Sing-box` / `Mihomo` split-DNS & surgical QUIC (`UDP/443`) governance, and multi-site `100.x + 4via6` mesh routing** — with a built-in **Model Context Protocol (`MCP`) server**.
 
-Edit one machine-readable topology file ([STARHUB_GROUND_TRUTH.json](./STARHUB_GROUND_TRUTH.json)) and run `./bin/starhub render` to deterministically compile dual-stack `iptables`/`ip6tables` allowlists, split-DNS/QUIC proxy rulesets, restricted guest sandbox bootstraps, IoT camera kernel kill-switches, and reverse-SSH `systemd` lifelines—verified by an 8-dimension zero-drift & zero-PII harness.
+Prevent autonomous coding agents (**Claude Code, Codex, OpenHands, Cursor, Docker MCP containers**) from scanning your RFC 1918 LAN or reaching `:22` SSH / `:5432` Postgres / `:6379` Redis, eliminate hotel Wi-Fi subnet collisions, and cure mobile QUIC blackholes from one declarative JSON topology ([STARHUB_GROUND_TRUTH.json](./STARHUB_GROUND_TRUTH.json)).
 
 ![StarHub Kit 15-Second Zero-Root Terminal Demo](./assets/terminal-demo.svg)
 
@@ -19,15 +19,18 @@ Edit one machine-readable topology file ([STARHUB_GROUND_TRUTH.json](./STARHUB_G
 ```bash
 # Option A — One-command install via official Homebrew tap (macOS & Linuxbrew)
 brew install Ziqi/tap/starhub-kit
-starhub render --profile minimal --only mihomo --dry-run
+starhub render --profile ai-sandbox --target tailscale-acl --dry-run
+starhub render --profile ai-sandbox --target macos-pf --dry-run
+starhub render --profile ai-sandbox --target nftables --dry-run
 
-# Option B — Clone & preview modular Mihomo or AI-sandbox rules directly to stdout (no root required)
+# Option B — Preview Sing-box or Mihomo split-DNS & surgical QUIC rulesets directly to stdout
 git clone https://github.com/Ziqi/starhub-kit.git && cd starhub-kit
+./bin/starhub render --target singbox --dry-run
 ./bin/starhub render --profile minimal --only mihomo --dry-run
-./bin/starhub render --only ai-sandbox --dry-run
 
-# Option C — Run directly via Nix Flake without cloning
-nix run github:Ziqi/starhub-kit -- render --profile minimal --only mihomo --dry-run
+# Option C — Mount directly in Claude Desktop / Cursor / Windsurf as a zero-dependency MCP Server
+# Add to mcpServers: { "starhub": { "command": "starhub", "args": ["mcp"] } }
+nix run github:Ziqi/starhub-kit -- audit --profile ai-sandbox
 ```
 
 ---
@@ -78,8 +81,9 @@ You do **not** need Proxmox VE, dedicated observability hosts, or three overseas
 
 | Tier | Hardware Needed | Setup Time | How to Use |
 |---|---|---|---|
-| **Tier 0 · Drop-In Ruleset** | Any existing **OpenWrt / Clash Verge / Mihomo Party / Stash + Tailscale** setup | **30 seconds** (Zero Python) | Copy `dns:` and `rules:` from [`scripts/profiles/standalone-mihomo-tailscale-guardrails.yaml`](./scripts/profiles/standalone-mihomo-tailscale-guardrails.yaml) directly into your `config.yaml` |
-| **Tier 1 · StarHub Lite (`minimal`)** | **1 Gateway** + **1 Laptop/PC** + **1 Egress** (no PVE, no custom DERP, no extra VMs) | **3 minutes** | Edit 3 items in [`profiles/topology.minimal.json`](./profiles/topology.minimal.json) and run `./bin/starhub render --profile minimal --out-dir ./dist-minimal` (or preview with `--dry-run`) |
+| **Tier AI · Autonomous Agent Firewall (`ai-sandbox`)** | **Any Mac / Linux workstation or Tailscale tailnet** running Claude Code, Codex, OpenHands, or Docker AI containers | **15 seconds** | `starhub render --profile ai-sandbox --target nftables\|macos-pf\|tailscale-acl --dry-run` ([`profiles/topology.ai-sandbox.json`](./profiles/topology.ai-sandbox.json)) or run `starhub mcp` |
+| **Tier 0 · Drop-In Ruleset (`singbox` / `mihomo`)** | Any existing **Sing-box / OpenWrt / Clash Verge / Mihomo Party / Stash + Tailscale** setup | **30 seconds** | Run `starhub render --target singbox --dry-run` or copy [`scripts/profiles/standalone-mihomo-tailscale-guardrails.yaml`](./scripts/profiles/standalone-mihomo-tailscale-guardrails.yaml) |
+| **Tier 1 · StarHub Lite (`minimal`)** | **1 Gateway** + **1 Laptop/PC** + **1 Egress** (no PVE, no custom DERP, no extra VMs) | **3 minutes** | Edit 3 items in [`profiles/topology.minimal.json`](./profiles/topology.minimal.json) and run `./bin/starhub render --profile minimal --out-dir ./dist-minimal` |
 | **Tier 2 · Full Blueprint (`full`)** | Multi-site mesh + isolated compute workstation + cloud AI sandboxes + IoT camera kill-switch | **15 minutes** | `./bin/starhub init && ./bin/starhub render --out-dir ./dist` ([`topology.example.json`](./topology.example.json)) |
 
 ---
@@ -147,10 +151,10 @@ Every release and `main` build publishes a **Sigstore + GitHub OIDC `SLSA Build 
 
 ```bash
 # 1. Verify GitHub OIDC / Sigstore SLSA Build Level 3 provenance certificate
-gh attestation verify starhub-kit-v1.2.0.tar.gz --repo Ziqi/starhub-kit
+gh attestation verify starhub-kit-v1.3.0.tar.gz --repo Ziqi/starhub-kit
 
 # 2. Verify bit-for-bit reproducible tarball against source tag
-./bin/starhub archive --verify-file ./starhub-kit-v1.2.0.tar.gz --prefix starhub-kit-v1.2.0
+./bin/starhub archive --verify-file ./starhub-kit-v1.3.0.tar.gz --prefix starhub-kit-v1.3.0
 ```
 
 Released under the [MIT License](./LICENSE). Please review [GOVERNANCE.md](./GOVERNANCE.md), [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md), [CONTRIBUTING.md](./CONTRIBUTING.md), and [SECURITY.md](./SECURITY.md) before submitting a pull request.

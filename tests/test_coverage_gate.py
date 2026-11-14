@@ -158,12 +158,12 @@ def exercise_suite(ctl_mod, temp_root: pathlib.Path) -> None:
         # Reproducible archive build, verify & mismatch detection
         tar_out = temp_root / "dist_test" / "repro-test.tar.gz"
         assert ctl_mod.cmd_archive(temp_root, output=None, prefix="starhub-kit", verify=True) == 0
-        assert ctl_mod.cmd_archive(temp_root, output=tar_out, prefix="starhub-kit-v1.2.0", verify=True) == 0
+        assert ctl_mod.cmd_archive(temp_root, output=tar_out, prefix="starhub-kit-v1.3.0", verify=True) == 0
         assert (
             ctl_mod.cmd_archive(
                 temp_root,
                 output=None,
-                prefix="starhub-kit-v1.2.0",
+                prefix="starhub-kit-v1.3.0",
                 verify=False,
                 verify_file=tar_out,
             )
@@ -190,7 +190,76 @@ def exercise_suite(ctl_mod, temp_root: pathlib.Path) -> None:
             == 1
         )
 
-        # 5. CLI main() dispatch across subcommands (init, render, archive, export-workstation, doctor)
+        # 5. Cross-platform targets (nftables, macos-pf, tailscale-acl, singbox, all) & ai-sandbox profile
+        ai_out = temp_root / "dist_ai_all"
+        assert (
+            ctl_mod.cmd_render(
+                temp_root,
+                check_only=False,
+                in_place=False,
+                out_dir=ai_out,
+                profile="ai-sandbox",
+                only_module="all",
+                dry_run=False,
+                target="all",
+            )
+            == 0
+        )
+        assert (ai_out / "nftables" / "starhub-ai-sandbox.nft").is_file()
+        assert (ai_out / "macos-pf" / "com.starhub.ai-sandbox.pf.conf").is_file()
+        assert (ai_out / "tailscale-acl" / "tailscale-policy.json").is_file()
+        assert (ai_out / "singbox" / "singbox-tailscale-quic-guard.json").is_file()
+
+        for tgt in ("nftables", "macos-pf", "tailscale-acl", "singbox"):
+            assert (
+                ctl_mod.cmd_render(
+                    temp_root,
+                    check_only=False,
+                    in_place=False,
+                    out_dir=None,
+                    profile="ai-sandbox",
+                    only_module="all",
+                    dry_run=True,
+                    target=tgt,
+                )
+                == 0
+            )
+
+        # Audit clean & risky topologies
+        assert ctl_mod.cmd_audit(temp_root, profile="ai-sandbox") == 0
+        risky_verdict = ctl_mod.audit_topology_security(
+            {
+                "home_lan_cidr": "192.168.0.0/24",
+                "admin_allowlist_nodes": [],
+                "nodes": {"agent_sandbox": {"allowed_targets": ["100.64.0.15:22"]}},
+            }
+        )
+        assert risky_verdict["passed"] is False and risky_verdict["risk_count"] == 3
+
+        # 6. Zero-dependency MCP JSON-RPC 2.0 server (newline + Content-Length framing)
+        mcp_requests = [
+            b'{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}\n',
+            b'{"jsonrpc":"2.0","method":"notifications/initialized"}\n',
+            b'{"jsonrpc":"2.0","id":2,"method":"ping"}\n',
+            b'{"jsonrpc":"2.0","id":3,"method":"tools/list"}\n',
+            b'{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"compile_ai_sandbox_policy","arguments":{"backend":"nftables","sandbox_ips":["100.64.0.210"],"allowed_api_targets":["100.64.0.15:3001"]}}}\n',
+            b'{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"compile_ai_sandbox_policy","arguments":{"backend":"macos-pf"}}}\n',
+            b'{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"compile_ai_sandbox_policy","arguments":{"backend":"tailscale-acl"}}}\n',
+            b'{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"compile_ai_sandbox_policy","arguments":{"backend":"iptables"}}}\n',
+            b'{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"render_quic_mesh_guardrails","arguments":{"engine":"singbox"}}}\n',
+            b'{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"render_quic_mesh_guardrails","arguments":{"engine":"mihomo"}}}\n',
+            b'{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"audit_topology_security","arguments":{}}}\n',
+            b'{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"unknown_tool","arguments":{}}}\n',
+            b'{"jsonrpc":"2.0","id":12,"method":"unknown/method"}\n',
+        ]
+        framed_body = b'{"jsonrpc":"2.0","id":99,"method":"ping"}'
+        framed_msg = f"Content-Length: {len(framed_body)}\r\nContent-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n".encode("ascii") + framed_body
+        mcp_in = io.BytesIO(b"".join(mcp_requests) + b"\n" + framed_msg)
+        mcp_out = io.BytesIO()
+        assert ctl_mod.serve_mcp_stdio(temp_root, mcp_in, mcp_out) == 0
+        assert b"starhub-kit" in mcp_out.getvalue() and b"Content-Length:" in mcp_out.getvalue()
+
+        # 7. CLI main() dispatch across subcommands (init, render, audit, archive, export-workstation, doctor)
         orig_argv = sys.argv[:]
         try:
             min_dir = temp_root / "dist_min_test"
@@ -198,7 +267,9 @@ def exercise_suite(ctl_mod, temp_root: pathlib.Path) -> None:
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "init"],
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "render", "--check"],
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "render", "--profile", "minimal", "--only", "mihomo", "--dry-run"],
+                ["starhub-ctl.py", "--repo-root", str(temp_root), "render", "--profile", "ai-sandbox", "--target", "tailscale-acl", "--dry-run"],
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "render", "--profile", "minimal", "--out-dir", str(min_dir)],
+                ["starhub-ctl.py", "--repo-root", str(temp_root), "audit", "--profile", "ai-sandbox"],
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "archive", "--verify"],
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "export-workstation"],
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "doctor", "--local-docs-only"],

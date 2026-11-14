@@ -6,14 +6,18 @@ StarHub Declarative Topology Compiler & Toolkit CLI (starhub-ctl.py)
 Zero third-party dependencies (Python 3.9+ stdlib only).
 
 Subcommands:
-  init [--force] [--profile full|minimal]
-      Initialize STARHUB_GROUND_TRUTH.json from full or minimal template.
-  render [--profile full|minimal] [--only all|firewall|mihomo|ai-sandbox|lifeline]
+  init [--force] [--profile full|minimal|ai-sandbox]
+      Initialize STARHUB_GROUND_TRUTH.json from full, minimal, or ai-sandbox template.
+  render [--profile full|minimal|ai-sandbox] [--only all|firewall|mihomo|ai-sandbox|lifeline]
+         [--target default|nftables|macos-pf|tailscale-acl|singbox|all]
          [--check | --in-place | --out-dir <dir> | --dry-run]
-      Deterministically compile dual-stack firewall scripts, Cloud Agent B2
-      sandbox bootstrap, Mihomo shared guardrails, gateway config skeleton,
-      camera cloud kill-switch, SSH config drop-in, and Lifeline systemd units
-      from STARHUB_GROUND_TRUTH.json (or preview to stdout via --dry-run).
+      Deterministically compile dual-stack firewall scripts, Linux nftables, macOS pf,
+      Tailscale ACL JSON, Sing-box / Mihomo QUIC & split-DNS guardrails, Cloud Agent B2
+      sandbox bootstrap, SSH config drop-in, and Lifeline systemd units.
+  audit [--profile full|minimal|ai-sandbox]
+      Audit topology JSON for RFC 1918 Wi-Fi collision risks and exposed AI sandbox ports.
+  mcp
+      Run zero-dependency Model Context Protocol (MCP) JSON-RPC 2.0 server over stdio.
   archive [--output <tar.gz>] [--prefix <dir>] [--verify] [--verify-file <tar.gz>]
       Build or verify a bit-for-bit reproducible source tarball (mtime=0, uid/gid=0).
   doctor [extra args...]
@@ -28,6 +32,7 @@ import argparse
 import gzip
 import hashlib
 import io
+import ipaddress
 import json
 import os
 import pathlib
@@ -980,10 +985,268 @@ def canonical_repo_targets(gt: dict) -> dict[str, tuple[str, int]]:
     return targets
 
 
+APPLE_QUIC_SUFFIXES = [
+    "tv.apple.com",
+    "itunes.apple.com",
+    "media.apple.com",
+    "apps.apple.com",
+    "apis.apple.com",
+    "music.apple.com",
+    "videos.apple.com",
+    "mzstatic.com",
+    "aaplimg.com",
+    "itunes.apple.com.edgesuite.net",
+    "itunes-apple.com.akadns.net",
+    "apple.map.fastly.net",
+]
+GMAIL_QUIC_SUFFIXES = ["mail.google.com", "inbox.google.com", "gmail.com"]
+GMAIL_QUIC_DOMAINS = [
+    "oauth2.googleapis.com",
+    "oauthaccountmanager.googleapis.com",
+    "gogaccountservice-pa.googleapis.com",
+    "notifications-pa.googleapis.com",
+    "peoplestack-pa.googleapis.com",
+    "taskassist-pa.googleapis.com",
+    "addons-pa.googleapis.com",
+    "appsgenaiserver-pa.googleapis.com",
+    "robinfrontend-pa.googleapis.com",
+    "mail-attachment.googleusercontent.com",
+    "ci3.googleusercontent.com",
+    "ci4.googleusercontent.com",
+    "ci5.googleusercontent.com",
+    "ci6.googleusercontent.com",
+    "lh3.googleusercontent.com",
+    "lh4.googleusercontent.com",
+    "lh5.googleusercontent.com",
+    "lh6.googleusercontent.com",
+]
+
+
+def _extract_sandbox_ports_and_ips(gt: dict) -> tuple[list[str], list[str], list[int], list[int]]:
+    nodes = gt.get("nodes", {}) if isinstance(gt.get("nodes"), dict) else {}
+    b2 = nodes.get("agent_sandbox", {}) if isinstance(nodes.get("agent_sandbox"), dict) else {}
+    v4_ips = list(b2.get("tailscale_ips") or ["100.64.0.201"])
+    v6_ips = list(b2.get("tailscale_ip6s") or ["2001:db8:a1e0::201"])
+    allowed_ports: list[int] = []
+    for item in b2.get("allowed_targets") or ["100.64.0.15:3001"]:
+        if ":" in str(item):
+            port_val = int(str(item).rsplit(":", 1)[1])
+            if port_val != 22 and port_val not in allowed_ports:
+                allowed_ports.append(port_val)
+    if not allowed_ports:
+        allowed_ports = [3001]
+    blocked_ports = sorted({22, 2375, 3306, 5432, 6379, 9000, *(int(p) for p in (b2.get("blocked_ports") or []))})
+    return v4_ips, v6_ips, allowed_ports, blocked_ports
+
+
+def render_nftables_sandbox_guard(gt: dict) -> str:
+    admin_v4, admin_v6 = _collect_admin_allowlists(gt)
+    sb_v4, sb_v6, allowed_ports, blocked_ports = _extract_sandbox_ports_and_ips(gt)
+    v4_set = ", ".join(sb_v4)
+    v6_set = ", ".join(sb_v6)
+    adm_v4 = ", ".join(admin_v4 or ["100.64.0.31"])
+    adm_v6 = ", ".join(admin_v6 or ["2001:db8:a1e0::31"])
+    allow_p = ", ".join(str(p) for p in allowed_ports)
+    block_p = ", ".join(str(p) for p in blocked_ports)
+    return f"""#!/usr/sbin/nft -f
+# StarHub AI Agent Sandbox Firewall (Linux nftables dual-stack inet table)
+# Hard-blocks autonomous coding agents (Claude Code / Codex / OpenHands / Docker MCP)
+# from TCP :22 SSH, Docker sockets, databases, and RFC 1918 LAN lateral movement.
+
+table inet starhub_ai_guard
+delete table inet starhub_ai_guard
+
+table inet starhub_ai_guard {{
+  set admin_v4 {{ type ipv4_addr; elements = {{ {adm_v4} }} }}
+  set admin_v6 {{ type ipv6_addr; elements = {{ {adm_v6} }} }}
+  set ai_sandbox_v4 {{ type ipv4_addr; elements = {{ {v4_set} }} }}
+  set ai_sandbox_v6 {{ type ipv6_addr; elements = {{ {v6_set} }} }}
+
+  chain input {{
+    type filter hook input priority -10; policy accept;
+    iifname "lo" accept
+    ip saddr @admin_v4 accept
+    ip6 saddr @admin_v6 accept
+    ip saddr @ai_sandbox_v4 tcp dport {{ {block_p} }} counter drop
+    ip6 saddr @ai_sandbox_v6 tcp dport {{ {block_p} }} counter drop
+    ip saddr @ai_sandbox_v4 tcp dport {{ {allow_p} }} accept
+    ip6 saddr @ai_sandbox_v6 tcp dport {{ {allow_p} }} accept
+    ip saddr @ai_sandbox_v4 counter drop
+    ip6 saddr @ai_sandbox_v6 counter drop
+  }}
+
+  chain forward {{
+    type filter hook forward priority -10; policy accept;
+    ip saddr @ai_sandbox_v4 ip daddr {{ 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 }} counter drop
+    ip saddr @ai_sandbox_v4 tcp dport {{ {block_p} }} counter drop
+    ip6 saddr @ai_sandbox_v6 tcp dport {{ {block_p} }} counter drop
+  }}
+}}
+"""
+
+
+def render_macos_pf_sandbox_anchor(gt: dict) -> str:
+    admin_v4, admin_v6 = _collect_admin_allowlists(gt)
+    sb_v4, sb_v6, allowed_ports, blocked_ports = _extract_sandbox_ports_and_ips(gt)
+    admins = " ".join([*admin_v4, *admin_v6] or ["100.64.0.31"])
+    sandboxes = " ".join([*sb_v4, *sb_v6])
+    allow_p = ", ".join(str(p) for p in allowed_ports)
+    block_p = ", ".join(str(p) for p in blocked_ports)
+    return f"""# StarHub AI Agent Sandbox Anchor for macOS Packet Filter (pf)
+# Install: sudo cp com.starhub.ai-sandbox.pf.conf /etc/pf.anchors/com.starhub.ai_sandbox
+# Activate in /etc/pf.conf: anchor "com.starhub.ai_sandbox" + load anchor from file, then `sudo pfctl -f /etc/pf.conf -e`
+
+table <starhub_admin_hosts> persist {{ {admins} }}
+table <starhub_ai_sandboxes> persist {{ {sandboxes} }}
+table <starhub_rfc1918_lan> const {{ 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 }}
+
+pass in quick from <starhub_admin_hosts> to any keep state
+block return in quick proto tcp from <starhub_ai_sandboxes> to any port {{ {block_p} }}
+pass in quick proto tcp from <starhub_ai_sandboxes> to any port {{ {allow_p} }} keep state
+block return in quick from <starhub_ai_sandboxes> to any
+block return out quick from <starhub_ai_sandboxes> to <starhub_rfc1918_lan>
+"""
+
+
+def render_tailscale_acl_policy(gt: dict) -> str:
+    admin_v4, _ = _collect_admin_allowlists(gt)
+    sb_v4, _, allowed_ports, _ = _extract_sandbox_ports_and_ips(gt)
+    nodes = gt.get("nodes", {}) if isinstance(gt.get("nodes"), dict) else {}
+    api_hosts: list[str] = []
+    for key in ("panel", "home"):
+        nd = nodes.get(key)
+        if isinstance(nd, dict) and nd.get("tailscale_ip"):
+            api_hosts.append(str(nd["tailscale_ip"]))
+    if not api_hosts:
+        api_hosts = ["100.64.0.15"]
+    dst_specs = [f"{host}:{port}" for host in api_hosts for port in allowed_ports if port != 22]
+    policy = {
+        "tagOwners": {
+            "tag:admin": ["autogroup:admin"],
+            "tag:internal-api": ["autogroup:admin"],
+            "tag:ai-sandbox": ["autogroup:admin"],
+        },
+        "hosts": {
+            "starhub-primary-admin": (admin_v4[0] if admin_v4 else "100.64.0.31"),
+            "starhub-ai-sandbox-1": sb_v4[0],
+        },
+        "acls": [
+            {"action": "accept", "src": ["tag:admin", "autogroup:admin"], "dst": ["*:*"]},
+            {"action": "accept", "src": ["tag:ai-sandbox", *sb_v4], "dst": dst_specs},
+        ],
+        "ssh": [
+            {
+                "action": "accept",
+                "src": ["tag:admin", "autogroup:admin"],
+                "dst": ["tag:internal-api", "autogroup:self"],
+                "users": ["autogroup:nonroot", "root"],
+            }
+        ],
+    }
+    return json.dumps(policy, indent=2) + "\n"
+
+
+def render_singbox_guardrails(gt: dict) -> str:
+    egress = gt.get("egress_vps", {}) if isinstance(gt.get("egress_vps"), dict) else {}
+    primary_tag = next(iter(egress.values()), {"name": "proxy-out"}).get("name", "proxy-out")
+    cfg = {
+        "dns": {
+            "servers": [
+                {"tag": "dns-tailscale", "address": "100.100.100.100", "detour": "direct-out"},
+                {"tag": "dns-direct", "address": "https://223.5.5.5/dns-query", "detour": "direct-out"},
+                {"tag": "dns-remote", "address": "https://1.1.1.1/dns-query", "detour": primary_tag},
+            ],
+            "rules": [
+                {"domain_suffix": [".ts.net", "tailscale.com"], "server": "dns-tailscale"},
+                {"rule_set": ["geosite-cn"], "server": "dns-direct"},
+            ],
+            "final": "dns-remote",
+            "independent_cache": True,
+        },
+        "route": {
+            "rules": [
+                {
+                    "port": [3478],
+                    "outbound": "direct-out",
+                },
+                {
+                    "ip_cidr": ["100.64.0.0/10"],
+                    "domain_suffix": [".ts.net", "tailscale.com"],
+                    "outbound": "direct-out",
+                },
+                {
+                    "network": ["udp"],
+                    "port": [443],
+                    "domain_suffix": [*APPLE_QUIC_SUFFIXES, *GMAIL_QUIC_SUFFIXES],
+                    "domain": GMAIL_QUIC_DOMAINS,
+                    "action": "reject",
+                },
+            ],
+            "final": primary_tag,
+        },
+    }
+    return json.dumps(cfg, indent=2) + "\n"
+
+
+def audit_topology_security(gt: dict) -> dict:
+    findings: list[str] = []
+    lan_cidr = str(gt.get("home_lan_cidr", ""))
+    try:
+        net = ipaddress.ip_network(lan_cidr, strict=False)
+        is_rfc1918_slash24 = (
+            net.version == 4
+            and net.prefixlen >= 24
+            and (
+                net.subnet_of(ipaddress.ip_network("192.168.0.0/16"))
+                or net.subnet_of(ipaddress.ip_network("10.0.0.0/8"))
+                or net.subnet_of(ipaddress.ip_network("172.16.0.0/12"))
+            )
+        )
+    except ValueError:
+        is_rfc1918_slash24 = False
+    if is_rfc1918_slash24:
+        findings.append(
+            f"HIGH_COLLISION_RISK: home_lan_cidr={lan_cidr} overlaps common hotel/coffee-shop Wi-Fi; prefer native Tailscale 100.x + 4via6."
+        )
+    admin_v4, admin_v6 = _collect_admin_allowlists(gt)
+    if not admin_v4 and not admin_v6:
+        findings.append("EMPTY_ADMIN_ALLOWLIST: no admin Tailscale IPv4/IPv6 addresses resolved from admin_allowlist_nodes.")
+    nodes = gt.get("nodes", {}) if isinstance(gt.get("nodes"), dict) else {}
+    b2 = nodes.get("agent_sandbox")
+    if isinstance(b2, dict):
+        dangerous = {22, 2375, 3306, 5432, 6379}
+        for target in b2.get("allowed_targets") or []:
+            if ":" in str(target):
+                port = int(str(target).rsplit(":", 1)[1])
+                if port in dangerous:
+                    findings.append(f"SANDBOX_PRIVILEGE_EXPOSURE: agent_sandbox allowed_targets exposes sensitive port :{port} ({target}).")
+    return {
+        "passed": len(findings) == 0,
+        "risk_count": len(findings),
+        "findings": findings,
+        "summary": "0 security/collision issues detected" if not findings else f"{len(findings)} issue(s) require attention",
+    }
+
+
 def _resolve_profile_template(repo_root: pathlib.Path, profile: str) -> pathlib.Path:
     if profile == "minimal":
         return repo_root / "profiles" / "topology.minimal.json"
+    if profile == "ai-sandbox":
+        return repo_root / "profiles" / "topology.ai-sandbox.json"
     return repo_root / "topology.example.json"
+
+
+def _build_cross_platform_targets(gt: dict, target: str) -> dict[str, tuple[str, int]]:
+    extra: dict[str, tuple[str, int]] = {}
+    if target in ("nftables", "all"):
+        extra["nftables/starhub-ai-sandbox.nft"] = (render_nftables_sandbox_guard(gt), 0o644)
+    if target in ("macos-pf", "all"):
+        extra["macos-pf/com.starhub.ai-sandbox.pf.conf"] = (render_macos_pf_sandbox_anchor(gt), 0o644)
+    if target in ("tailscale-acl", "all"):
+        extra["tailscale-acl/tailscale-policy.json"] = (render_tailscale_acl_policy(gt), 0o644)
+    if target in ("singbox", "all"):
+        extra["singbox/singbox-tailscale-quic-guard.json"] = (render_singbox_guardrails(gt), 0o644)
+    return extra
 
 
 def cmd_init(repo_root: pathlib.Path, force: bool, profile: str = "full") -> int:
@@ -1051,6 +1314,18 @@ def _filter_by_module(
     return filtered
 
 
+def _select_bundle_for_target(
+    gt: dict, only_module: str, target: str
+) -> dict[str, tuple[str, int]]:
+    if target == "default":
+        return _filter_by_module(_build_bundle_dict(gt), only_module)
+    if target == "all":
+        merged = dict(_filter_by_module(_build_bundle_dict(gt), only_module))
+        merged.update(_build_cross_platform_targets(gt, "all"))
+        return merged
+    return _build_cross_platform_targets(gt, target)
+
+
 def cmd_render(
     repo_root: pathlib.Path,
     check_only: bool,
@@ -1059,9 +1334,10 @@ def cmd_render(
     profile: str = "full",
     only_module: str = "all",
     dry_run: bool = False,
+    target: str = "default",
 ) -> int:
-    if profile == "minimal" and not check_only and not in_place:
-        gt_path = _resolve_profile_template(repo_root, "minimal")
+    if profile in ("minimal", "ai-sandbox") and not check_only and not in_place:
+        gt_path = _resolve_profile_template(repo_root, profile)
     else:
         gt_path = repo_root / "STARHUB_GROUND_TRUTH.json"
         if dry_run and not gt_path.is_file():
@@ -1093,16 +1369,16 @@ def cmd_render(
         return 0
 
     if dry_run:
-        preview_items = _filter_by_module(_build_bundle_dict(gt), only_module)
+        preview_items = _select_bundle_for_target(gt, only_module, target)
         if not preview_items:
             print(
-                f"# [starhub-ctl] No artifacts matched --only={only_module} under profile={profile} "
+                f"# [starhub-ctl] No artifacts matched --only={only_module} --target={target} under profile={profile} "
                 f"(pass --profile full to preview optional sandbox/DERP modules)."
             )
             return 0
         for rel, (content, mode) in preview_items.items():
             print(
-                f"# === [DRY-RUN PREVIEW] {rel} (mode=0o{mode:o}, profile={profile}, only={only_module}) ==="
+                f"# === [DRY-RUN PREVIEW] {rel} (mode=0o{mode:o}, profile={profile}, only={only_module}, target={target}) ==="
             )
             print(normalize_lf(content).rstrip("\n"))
             print()
@@ -1121,10 +1397,16 @@ def cmd_render(
         print(f"[starhub-ctl] Rendered {len(selected_targets)} canonical files in-place under {repo_root}.")
         return 0
 
-    default_dir_name = "dist-minimal" if (profile == "minimal" or gt.get("deployment_tier") == "minimal") else "dist"
+    tier = gt.get("deployment_tier")
+    if profile == "minimal" or tier == "minimal":
+        default_dir_name = "dist-minimal"
+    elif profile == "ai-sandbox" or tier == "ai-sandbox":
+        default_dir_name = "dist-ai-sandbox"
+    else:
+        default_dir_name = "dist"
     dest = (out_dir or (repo_root / default_dir_name)).resolve()
     dest.mkdir(parents=True, exist_ok=True)
-    bundle = _filter_by_module(_build_bundle_dict(gt), only_module)
+    bundle = _select_bundle_for_target(gt, only_module, target)
 
     for rel, (content, mode) in bundle.items():
         fp = dest / rel
@@ -1132,15 +1414,175 @@ def cmd_render(
         fp.write_text(normalize_lf(content), encoding="utf-8")
         os.chmod(fp, mode)
     print(
-        f"[starhub-ctl] Rendered {len(bundle)} deployment artifacts into {dest} (profile={profile}, only={only_module})"
+        f"[starhub-ctl] Rendered {len(bundle)} deployment artifacts into {dest} (profile={profile}, only={only_module}, target={target})"
     )
+    return 0
+
+
+def cmd_audit(repo_root: pathlib.Path, profile: str = "full") -> int:
+    if profile in ("minimal", "ai-sandbox"):
+        gt_path = _resolve_profile_template(repo_root, profile)
+    else:
+        gt_path = repo_root / "STARHUB_GROUND_TRUTH.json"
+        if not gt_path.is_file():
+            gt_path = _resolve_profile_template(repo_root, "full")
+    gt = load_json_compatible(gt_path)
+    report = audit_topology_security(gt)
+    print(json.dumps(report, indent=2))
+    return 0 if report["passed"] else 1
+
+
+MCP_TOOLS_SPEC = [
+    {
+        "name": "compile_ai_sandbox_policy",
+        "description": "Compile zero-lateral-movement firewall / ACL policy for autonomous AI coding agents (Linux nftables, macOS pf, Tailscale ACL JSON, or Linux iptables).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "backend": {
+                    "type": "string",
+                    "enum": ["nftables", "macos-pf", "tailscale-acl", "iptables"],
+                    "default": "nftables",
+                },
+                "sandbox_ips": {"type": "array", "items": {"type": "string"}},
+                "allowed_api_targets": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+    },
+    {
+        "name": "render_quic_mesh_guardrails",
+        "description": "Render deterministic Tailscale split-DNS + surgical Apple/Gmail UDP/443 QUIC ruleset for Sing-box or Mihomo (Clash Meta).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "engine": {"type": "string", "enum": ["singbox", "mihomo"], "default": "singbox"}
+            },
+        },
+    },
+    {
+        "name": "audit_topology_security",
+        "description": "Audit a StarHub topology JSON for RFC 1918 Wi-Fi subnet collisions and exposed AI sandbox SSH/database ports.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "topology_json": {"type": "string"}
+            },
+        },
+    },
+]
+
+
+def _handle_mcp_request(repo_root: pathlib.Path, req: dict) -> dict | None:
+    method = req.get("method", "")
+    req_id = req.get("id")
+    if req_id is None or method.startswith("notifications/"):
+        return None
+    if method == "initialize":
+        return {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "result": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "starhub-kit", "version": "1.3.0"},
+            },
+        }
+    if method == "ping":
+        return {"jsonrpc": "2.0", "id": req_id, "result": {}}
+    if method == "tools/list":
+        return {"jsonrpc": "2.0", "id": req_id, "result": {"tools": MCP_TOOLS_SPEC}}
+    if method == "tools/call":
+        params = req.get("params") or {}
+        tool_name = params.get("name")
+        t_args = params.get("arguments") or {}
+        base_gt = load_json_compatible(_resolve_profile_template(repo_root, "ai-sandbox"))
+        if tool_name == "compile_ai_sandbox_policy":
+            b2 = base_gt.setdefault("nodes", {}).setdefault("agent_sandbox", {})
+            if t_args.get("sandbox_ips"):
+                b2["tailscale_ips"] = list(t_args["sandbox_ips"])
+            if t_args.get("allowed_api_targets"):
+                b2["allowed_targets"] = list(t_args["allowed_api_targets"])
+            backend = t_args.get("backend", "nftables")
+            if backend == "nftables":
+                out = render_nftables_sandbox_guard(base_gt)
+            elif backend == "macos-pf":
+                out = render_macos_pf_sandbox_anchor(base_gt)
+            elif backend == "tailscale-acl":
+                out = render_tailscale_acl_policy(base_gt)
+            else:
+                out = render_dash_fw(base_gt)
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {"content": [{"type": "text", "text": out}], "isError": False},
+            }
+        if tool_name == "render_quic_mesh_guardrails":
+            engine = t_args.get("engine", "singbox")
+            out = render_singbox_guardrails(base_gt) if engine == "singbox" else render_standalone_mihomo_guardrails(base_gt)
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {"content": [{"type": "text", "text": out}], "isError": False},
+            }
+        if tool_name == "audit_topology_security":
+            raw_json = t_args.get("topology_json")
+            gt_obj = load_json_compatible_from_str(raw_json) if raw_json else base_gt
+            verdict = audit_topology_security(gt_obj)
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "content": [{"type": "text", "text": json.dumps(verdict, indent=2)}],
+                    "isError": not verdict["passed"],
+                },
+            }
+        return {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "error": {"code": -32602, "message": f"Unknown tool: {tool_name}"},
+        }
+    return {
+        "jsonrpc": "2.0",
+        "id": req_id,
+        "error": {"code": -32601, "message": f"Method not found: {method}"},
+    }
+
+
+def serve_mcp_stdio(repo_root: pathlib.Path, in_stream, out_stream) -> int:
+    while True:
+        line = in_stream.readline()
+        if not line:
+            break
+        stripped = line.strip()
+        if not stripped:
+            continue
+        use_headers = False
+        if stripped.lower().startswith(b"content-length:"):
+            use_headers = True
+            length = int(stripped.split(b":", 1)[1].strip())
+            while True:
+                hdr = in_stream.readline()
+                if not hdr or hdr in (b"\r\n", b"\n"):
+                    break
+            payload = in_stream.read(length)
+        else:
+            payload = stripped
+        req = json.loads(payload.decode("utf-8"))
+        resp = _handle_mcp_request(repo_root, req)
+        if resp is not None:
+            encoded = json.dumps(resp).encode("utf-8")
+            if use_headers:
+                out_stream.write(f"Content-Length: {len(encoded)}\r\n\r\n".encode("ascii") + encoded)
+            else:
+                out_stream.write(encoded + b"\n")
+            out_stream.flush()
     return 0
 
 
 def build_reproducible_tarball_bytes(
     repo_root: pathlib.Path, prefix: str = "starhub-kit"
 ) -> tuple[bytes, int]:
-    skip_dirs = {".git", "__pycache__", "node_modules", ".next", "dist", "dist-minimal", ".pytest_cache"}
+    skip_dirs = {".git", "__pycache__", "node_modules", ".next", "dist", "dist-minimal", "dist-ai-sandbox", ".pytest_cache"}
     entries: list[tuple[str, pathlib.Path]] = []
     for root, dirs, files in os.walk(repo_root, followlinks=False):
         dirs[:] = sorted(
@@ -1248,23 +1690,34 @@ def main() -> int:
     )
     sub = parser.add_subparsers(dest="subcommand", required=True)
 
-    p_init = sub.add_parser("init", help="Create STARHUB_GROUND_TRUTH.json from full or minimal template")
+    p_init = sub.add_parser("init", help="Create STARHUB_GROUND_TRUTH.json from full, minimal, or ai-sandbox template")
     p_init.add_argument("--force", action="store_true", help="Overwrite existing STARHUB_GROUND_TRUTH.json")
-    p_init.add_argument("--profile", choices=("full", "minimal"), default="full", help="Topology template tier")
+    p_init.add_argument("--profile", choices=("full", "minimal", "ai-sandbox"), default="full", help="Topology template tier")
 
-    p_render = sub.add_parser("render", help="Compile network/firewall/Mihomo/Lifeline artifacts from SSOT")
-    p_render.add_argument("--profile", choices=("full", "minimal"), default="full", help="Render full SSOT or minimal single-gateway tier")
+    p_render = sub.add_parser("render", help="Compile firewall/nftables/pf/Tailscale-ACL/Sing-box/Mihomo/Lifeline artifacts")
+    p_render.add_argument("--profile", choices=("full", "minimal", "ai-sandbox"), default="full", help="Render full, minimal, or ai-sandbox tier")
     p_render.add_argument(
         "--only",
         choices=("all", "firewall", "mihomo", "ai-sandbox", "lifeline"),
         default="all",
         help="Compile or preview only a specific subsystem module",
     )
+    p_render.add_argument(
+        "--target",
+        choices=("default", "nftables", "macos-pf", "tailscale-acl", "singbox", "all"),
+        default="default",
+        help="Cross-platform policy backend to emit",
+    )
     g_mode = p_render.add_mutually_exclusive_group()
     g_mode.add_argument("--check", action="store_true", help="Verify canonical repo scripts match SSOT with zero drift")
     g_mode.add_argument("--in-place", action="store_true", help="Update canonical scripts under scripts/ in-place")
-    g_mode.add_argument("--out-dir", type=pathlib.Path, help="Output directory for rendered bundle (default: ./dist or ./dist-minimal)")
+    g_mode.add_argument("--out-dir", type=pathlib.Path, help="Output directory for rendered bundle")
     g_mode.add_argument("--dry-run", action="store_true", help="Preview rendered rules/scripts to stdout with zero disk writes or root privileges")
+
+    p_audit = sub.add_parser("audit", help="Audit topology for RFC 1918 Wi-Fi collision risks and exposed AI sandbox ports")
+    p_audit.add_argument("--profile", choices=("full", "minimal", "ai-sandbox"), default="full", help="Topology tier to audit")
+
+    sub.add_parser("mcp", help="Run zero-dependency Model Context Protocol (MCP) JSON-RPC 2.0 server over stdio")
 
     p_archive = sub.add_parser("archive", help="Build or verify a bit-for-bit reproducible source tarball")
     p_archive.add_argument("--output", type=pathlib.Path, help="Write deterministic .tar.gz to this path")
@@ -1278,7 +1731,7 @@ def main() -> int:
     args, extra_args = parser.parse_known_args()
     repo_root = args.repo_root.resolve()
 
-    if args.subcommand in ("init", "render", "archive", "export-workstation") and extra_args:
+    if args.subcommand in ("init", "render", "audit", "mcp", "archive", "export-workstation") and extra_args:
         parser.error(f"unrecognized arguments: {' '.join(extra_args)}")
 
     if args.subcommand == "init":
@@ -1292,7 +1745,12 @@ def main() -> int:
             args.profile,
             args.only,
             args.dry_run,
+            args.target,
         )
+    if args.subcommand == "audit":
+        return cmd_audit(repo_root, args.profile)
+    if args.subcommand == "mcp":
+        return serve_mcp_stdio(repo_root, sys.stdin.buffer, sys.stdout.buffer)
     if args.subcommand == "archive":
         return cmd_archive(repo_root, args.output, args.prefix, args.verify, args.verify_file)
     if args.subcommand == "export-workstation":

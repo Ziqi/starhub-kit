@@ -35,7 +35,7 @@ When granting cloud AI agents (such as ephemeral container sandboxes) read/actio
   ```
   ```bash
   openssl pkeyutl -verify -pubin -inkey release_ed25519_pub.pem \
-    -rawin -in starhub-kit-v1.2.0.tar.gz -sigfile starhub-kit-v1.2.0.tar.gz.sig
+    -rawin -in starhub-kit-v1.3.0.tar.gz -sigfile starhub-kit-v1.3.0.tar.gz.sig
   ```
 - **SPDX / REUSE 3.2**: All source scripts carry standard SPDX `MIT` license and copyright headers, with repository-wide machine-readable licensing declared in `REUSE.toml`, license text in `LICENSES/MIT.txt`, and citation metadata in `CITATION.cff`.
 - **OpenSSF Best Practices `Silver` Certification (`Project #16658`)**: `starhub-kit` holds an active **OpenSSF Best Practices `Silver`** badge (`tiered_percentage = 200%`: `67/67 Passing` + `55/55 Silver`), publicly verifiable at `https://www.bestpractices.dev/projects/16658` (`https://www.bestpractices.dev/projects/16658.json`).
@@ -78,6 +78,6 @@ In addition to holding **OpenSSF Best Practices `Silver` (`#16658`)**, `starhub-
 Every `starhub-kit-v*.tar.gz` release archive is built via `./bin/starhub archive` with normalized PAX headers (`mtime=0`, `uid=0`, `gid=0`, empty `uname`/`gname`, deterministic POSIX permissions, and `gzip` `mtime=0`). Any third party can check out the release tag on Linux or macOS and verify byte-for-byte reproducibility without root privileges:
 
 ```bash
-git checkout v1.2.0
-./bin/starhub archive --verify-file ./starhub-kit-v1.2.0.tar.gz --prefix starhub-kit-v1.2.0
+git checkout v1.3.0
+./bin/starhub archive --verify-file ./starhub-kit-v1.3.0.tar.gz --prefix starhub-kit-v1.3.0
 ```

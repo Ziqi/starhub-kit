@@ -1,6 +1,6 @@
 # StarHub Kit 全域统一变更与故障闭环主台账 (`STARHUB-LEDGER`)
 
-> **版本**：`StarHub Kit v1.2.0`  
+> **版本**：`StarHub Kit v1.3.0`  
 > **设计原则**：告别在多份零散文档中重复抄写流水的传统做法，一切**架构演进 `[UPD]`**、**缺陷根因闭环 `[BUGFIX]`** 与**算力工作站专项变更 `[WORKSTATION]`** 均按时间倒序（Append-Only，最新在最上方）统一追加于本账本。  
 > **关联索引**：
 > - 静态机器事实源（SSOT）：[STARHUB_GROUND_TRUTH.json](../../STARHUB_GROUND_TRUTH.json) · [mihomo-shared-guardrails.yaml](../../scripts/profiles/mihomo-shared-guardrails.yaml)
@@ -13,6 +13,7 @@
 
 | 条目 ID | 标签 | 日期 | 涉及模块 | 一句话摘要 |
 |---|---|---|---|---|
+| [UPD-20261114-003](#upd-20261114-003) | `[UPD][SECURITY][MCP]` | 2026-11-14 | `starhub-ctl` / `profiles` / `tests` / `README` | **StarHub Kit `v1.3.0` 自主 AI 沙箱防火墙预设（`ai-sandbox`）、跨平台四后端（`nftables` / `macOS pf` / `Tailscale ACL` / `Sing-box`）与零依赖原生 `MCP Server` 发布**：打通 Claude Code / Cursor / Codex 内网防渗透隔离与主流操作系统/代理栈一键导出 |
 | [UPD-20261114-002](#upd-20261114-002) | `[UPD][UX][SECURITY]` | 2026-11-14 | `starhub-ctl` / `README` / `SECURITY` / `flake.nix` | **StarHub Kit `v1.2.0` 模块化无特权预览（`--only` + `--dry-run`）、逐比特可重现归档（`archive --verify`）、原生 Nix Flake 与 OSPS Baseline L3 对齐发布**：降低外部上手门槛，首屏去内部代号化并内嵌 15 秒高清矢量终端动图 |
 | [UPD-20261114-001](#upd-20261114-001) | `[UPD][UX][OSS]` | 2026-11-14 | `profiles` / `starhub-ctl` / `docs` | **StarHub Kit `v1.1.0` 三级轻量化接入矩阵与英文协议排障手册发布**：新增零编译即贴即用规则包 `standalone-mihomo-tailscale-guardrails.yaml`、`StarHub Lite` 单网关极简模板（`--profile minimal`）及英文核心协议深潜手册 `ARCHITECTURE-AND-PLAYBOOK-EN.md` |
 | [UPD-20261113-004](#upd-20261113-004) | `[UPD][SECURITY][OSS]` | 2026-11-13 | 全仓拓扑 / `README` / `starhub-ctl` / `starhub-doctor` | **StarHub Kit `v1.0.3` 获颁 OpenSSF Silver 银牌认证（`#16658`）、全量角色化去指纹重构与移动端 Gmail `Section 9a` 前置规则同步**：正式挂载 OpenSSF Best Practices `Silver` 徽章（`200%`），将全部节点/IoT/出口重构为通用中立工程角色，补齐移动端 Gmail 内嵌图/附件 `UDP/443 REJECT` 前置防遮蔽母版，并升级 `--verify-public-export` 硬件画像反泄露门禁 |
@@ -24,6 +25,16 @@
 ---
 
 ## 二、详细变更与闭环流水（Chronological Details · Newest First）
+
+### UPD-20261114-003
+- **标题**：`[UPD][SECURITY][MCP]` StarHub Kit `v1.3.0` 自主 AI 沙箱防火墙预设（`ai-sandbox`）、跨平台四后端（`nftables` / `macOS pf` / `Tailscale ACL` / `Sing-box`）与零依赖原生 `MCP Server` 发布
+- **日期**：`2026-11-14`
+- **核心交付清单**：
+  1. **自主 AI 编程沙箱零横向渗透防火墙预设（`--profile ai-sandbox` · [topology.ai-sandbox.json](../../profiles/topology.ai-sandbox.json)）**：无需任何软路由或虚拟化集群，针对运行 Claude Code、Codex、OpenHands、Docker MCP 容器的开发机与内网环境一键生成防扫段、硬封 `:22` SSH 与 `:5432`/`:6379` 数据库端口策略。
+  2. **跨平台四后端编译器（`--target nftables|macos-pf|tailscale-acl|singbox|all`）与碰撞审计（`starhub audit`）**：原生输出 Linux `nftables` 双栈 `inet` 表、macOS `pf` 锚点、Tailscale 官方 `ACL JSON` 及 `Sing-box` 分域 DNS + 手术刀级 QUIC `reject` 规则集。
+  3. **零依赖标准 `MCP Server`（`starhub mcp`）**：纯 Python 标准库实现 JSON-RPC 2.0 `stdio` 协议（兼容换行分隔与 `Content-Length` 帧头），支持在 Claude Desktop / Cursor / Windsurf 中直接调用策略编译与拓扑安全体检。
+
+---
 
 ### UPD-20261114-002
 - **标题**：`[UPD][UX][SECURITY]` StarHub Kit `v1.2.0` 模块化无特权预览（`--only` / `--dry-run`）、逐比特可重现归档（`archive --verify`）、原生 Nix Flake 与 OSPS Baseline L3 完整对齐

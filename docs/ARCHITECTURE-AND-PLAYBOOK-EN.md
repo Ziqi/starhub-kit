@@ -1,6 +1,6 @@
 # StarHub Kit Architecture & Protocol Playbook (English)
 
-> **Version**: `StarHub Kit v1.2.0` · **Companion Docs**: [README.md](../README.md) · [README.zh-CN.md](../README.zh-CN.md) · [SECURITY.md](../SECURITY.md)
+> **Version**: `StarHub Kit v1.3.0` · **Companion Docs**: [README.md](../README.md) · [README.zh-CN.md](../README.zh-CN.md) · [SECURITY.md](../SECURITY.md)
 
 This playbook distills the core protocol engineering, firewall invariants, and progressive deployment tiers behind **StarHub Kit** for international homelab operators, network engineers, and AI infrastructure builders.
 

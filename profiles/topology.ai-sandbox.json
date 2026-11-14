@@ -1,0 +1,105 @@
+{
+  "schema_version": "3.1.0",
+  "repo_profile": "open_source_kit",
+  "deployment_tier": "ai-sandbox",
+  "system_name": "StarHub AI Sandbox Guard",
+  "system_version": "v1.3.0",
+  "updated_at": "2026-11-14",
+  "home_lan_cidr": "192.0.2.0/24",
+  "admin_allowlist_nodes": [
+    "laptop",
+    "panel"
+  ],
+  "ssot_workspace": {
+    "node": "panel",
+    "lan_ip": "192.0.2.15",
+    "tailscale_ip": "100.64.0.15",
+    "path": "/opt/starhub-kit",
+    "github_repo": "https://github.com/Ziqi/starhub-kit.git",
+    "dashboard_port": 3001,
+    "expected_probe_count": 16
+  },
+  "nodes": {
+    "laptop": {
+      "cn_name": "开发者主控终端",
+      "ssh_alias": [
+        "laptop"
+      ],
+      "lan_ip": "192.0.2.31",
+      "tailscale_ip": "100.64.0.31",
+      "tailscale_ip6": "2001:db8:a1e0::31",
+      "ports": [
+        22
+      ],
+      "role": "Primary developer workstation (full SSH & admin control)"
+    },
+    "panel": {
+      "cn_name": "内网受保护 API 与数据节点",
+      "ssh_alias": [
+        "panel"
+      ],
+      "lan_ip": "192.0.2.15",
+      "tailscale_ip": "100.64.0.15",
+      "tailscale_ip6": "2001:db8:a1e0::15",
+      "ports": [
+        22,
+        3001
+      ],
+      "protected_ports": [
+        3001,
+        5432,
+        6379,
+        9000
+      ],
+      "role": "Internal API & service host: exposes :3001 to AI sandboxes while hard-dropping :22 SSH and :5432/:6379 DBs"
+    },
+    "agent_sandbox": {
+      "cn_name": "自主 AI 编程沙箱池 (Claude Code / Codex / OpenHands / Docker MCP)",
+      "tailscale_ips": [
+        "100.64.0.201",
+        "100.64.0.202"
+      ],
+      "tailscale_ip6s": [
+        "2001:db8:a1e0::201",
+        "2001:db8:a1e0::202"
+      ],
+      "dynamic_hostname_pattern": "^(ai-agent|sandbox-worker)",
+      "bootstrap_script": "scripts/agent-tailscale-bootstrap.sh",
+      "proxy_listen": "127.0.0.1:1055",
+      "hostname_prefix": "ai-agent",
+      "warmup_targets": [
+        "100.64.0.15"
+      ],
+      "allowed_targets": [
+        "100.64.0.15:3001"
+      ],
+      "blocked_ports": [
+        22,
+        2375,
+        3306,
+        5432,
+        6379,
+        9000
+      ],
+      "blocked_chains": [
+        "STARHUB-BOT-NOSSH",
+        "STARHUB-BOT-NOSSH6"
+      ],
+      "role": "Untrusted autonomous AI coding agent sandboxes: zero :22 SSH, zero lateral LAN scan, explicit HTTP API allowlist only"
+    }
+  },
+  "egress_vps": {
+    "vps1": {
+      "name": "EgressPrimary",
+      "ssh_alias": "vps1",
+      "ip": "198.51.100.11",
+      "port": 443,
+      "ssh_port": 22,
+      "ssh_jump": null,
+      "sni": "cdn.example.com",
+      "provider": "Optional Upstream Proxy Egress",
+      "consumers": "Optional split-DNS & surgical QUIC ruleset"
+    }
+  },
+  "retired_assets_blocklist": []
+}

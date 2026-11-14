@@ -6,28 +6,31 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 > **语言切换 (Language)**：[English](./README.md) | **简体中文**  
-> **版本**：`v1.2.0` · **运行依赖**：Python 3.9+ 标准库（零第三方依赖） · **Nix 入口**：[`flake.nix`](./flake.nix) · **权威认证**：[OpenSSF `Silver` 银牌（`#16658`）](https://www.bestpractices.dev/projects/16658) + [OSPS Baseline L3](./SECURITY.md#6-openssf-osps-baseline-level-3-alignment--reproducible-builds)
+> **版本**：`v1.3.0` · **运行依赖**：Python 3.9+ 标准库（零第三方依赖） · **MCP 服务**：`starhub mcp` (`stdio`) · **Nix 入口**：[`flake.nix`](./flake.nix) · **权威认证**：[OpenSSF `Silver` 银牌（`#16658`）](https://www.bestpractices.dev/projects/16658) + [OSPS Baseline L3](./SECURITY.md#6-openssf-osps-baseline-level-3-alignment--reproducible-builds)
 
-**StarHub Kit（星枢开源套件）** 是一套零第三方依赖的**声明式多站点 Tailscale `100.x + 4via6` 零撞段组网、Mihomo（`Clash Meta`）确定性分域 DNS 与精细化 QUIC 治理、云端 AI 沙箱双栈白名单防火墙及带外 SSH 救生通道编译器**。
+**StarHub Kit（星枢开源套件）** 是一套零第三方依赖的 **AI Agent 沙箱网络防火墙与跨平台网络策略编译器**——原生支持一键编译导出 **Linux `nftables` / `iptables`、macOS `pf` 防火墙锚点、Tailscale 官方 `ACL JSON`、`Sing-box` / `Mihomo` 确定性分域 DNS 与精细化 QUIC（`UDP/443`）规则集，以及多站点 `100.x + 4via6` 零撞段组网与带外救生通道**，并内置标准 **`MCP Server`（`starhub mcp`）**。
 
-只需维护一份机器可读拓扑事实源 [STARHUB_GROUND_TRUTH.json](./STARHUB_GROUND_TRUTH.json)，执行 `./bin/starhub render`，即可确定性编译双栈 `iptables`/`ip6tables` 防火墙、分域 DNS 与精确 QUIC 规则集、受限云端沙箱引导脚本、物联网摄像头网关级物理断云开关与反向 SSH `systemd` 服务——底层内置 8 维度零配置漂移与数学级反隐私泄露门禁。
+无论是限制本地/云端自主编程 Agent（**Claude Code、Codex、OpenHands、Cursor、Docker MCP 容器**）扫描内网或偷连 `:22` SSH / `:5432` 数据库，还是解决出差连酒店 Wi-Fi 同名网段失联与移动端 QUIC 卡死，只需一份声明式拓扑 [STARHUB_GROUND_TRUTH.json](./STARHUB_GROUND_TRUTH.json) 即可确定性生成全平台规则并自动执行 8 维度反隐私泄露审计。
 
 ![StarHub Kit 15 秒零特权终端演示动图](./assets/terminal-demo.svg)
 
 ### 10 秒免安装 / 无特权预览体验（零写盘、无需 Root）
 
 ```bash
-# 方式一：通过官方 Homebrew Tap 一键安装（macOS 与 Linuxbrew 通用）
+# 方式一：通过官方 Homebrew Tap 一键安装并预览 AI 沙箱多平台隔离策略（macOS / Linux / Tailscale ACL）
 brew install Ziqi/tap/starhub-kit
-starhub render --profile minimal --only mihomo --dry-run
+starhub render --profile ai-sandbox --target tailscale-acl --dry-run
+starhub render --profile ai-sandbox --target macos-pf --dry-run
+starhub render --profile ai-sandbox --target nftables --dry-run
 
-# 方式二：克隆后直接在终端预览单个子模块（如仅看 Mihomo 分流或 AI 沙箱防火墙，0 文件写入）
+# 方式二：预览 Sing-box 或 Mihomo 分域 DNS 与精确 QUIC 规则集（0 文件写入）
 git clone https://github.com/Ziqi/starhub-kit.git && cd starhub-kit
+./bin/starhub render --target singbox --dry-run
 ./bin/starhub render --profile minimal --only mihomo --dry-run
-./bin/starhub render --only ai-sandbox --dry-run
 
-# 方式三：通过 Nix Flake 免克隆单行直接运行
-nix run github:Ziqi/starhub-kit -- render --profile minimal --only mihomo --dry-run
+# 方式三：在 Claude Desktop / Cursor / Windsurf 中直接挂载零依赖 MCP Server
+# mcpServers 配置：{ "starhub": { "command": "starhub", "args": ["mcp"] } }
+nix run github:Ziqi/starhub-kit -- audit --profile ai-sandbox
 ```
 
 ---
@@ -49,8 +52,9 @@ nix run github:Ziqi/starhub-kit -- render --profile minimal --only mihomo --dry-
 
 | 接入层级 | 所需设备门槛 | 上手耗时 | 使用方式 |
 |---|---|---|---|
-| **Tier 0 · 免编译即贴即用包** | 任何现成的 **OpenWrt / Clash Verge / Mihomo Party / Stash + Tailscale** 用户 | **30 秒**（零代码） | 直接复制 [`scripts/profiles/standalone-mihomo-tailscale-guardrails.yaml`](./scripts/profiles/standalone-mihomo-tailscale-guardrails.yaml) 中的 `dns:` 与 `rules:` 段粘贴至现有配置 |
-| **Tier 1 · 单网关轻量版 (`minimal`)** | 仅需 **1 台旁路由/Mini主机 + 1 台电脑 + 1 个出口**（无需 PVE、无需自建 DERP） | **3 分钟** | 修改 [`profiles/topology.minimal.json`](./profiles/topology.minimal.json) 三个核心字段，执行 `./bin/starhub render --profile minimal --out-dir ./dist-minimal`（或加 `--dry-run` 预览） |
+| **Tier AI · 自主 AI 沙箱防火墙 (`ai-sandbox`)** | **任意运行 Claude Code / Codex / Docker AI 的 Mac / Linux 开发机或 Tailscale 网络** | **15 秒** | 执行 `starhub render --profile ai-sandbox --target nftables\|macos-pf\|tailscale-acl --dry-run`（母版 [`profiles/topology.ai-sandbox.json`](./profiles/topology.ai-sandbox.json)）或启动 `starhub mcp` |
+| **Tier 0 · 免编译即贴即用包 (`singbox` / `mihomo`)** | 任何现成的 **Sing-box / OpenWrt / Clash Verge / Mihomo Party / Stash + Tailscale** 用户 | **30 秒** | 执行 `starhub render --target singbox --dry-run` 或复制 [`scripts/profiles/standalone-mihomo-tailscale-guardrails.yaml`](./scripts/profiles/standalone-mihomo-tailscale-guardrails.yaml) |
+| **Tier 1 · 单网关轻量版 (`minimal`)** | 仅需 **1 台旁路由/Mini主机 + 1 台电脑 + 1 个出口**（无需 PVE、无需自建 DERP） | **3 分钟** | 修改 [`profiles/topology.minimal.json`](./profiles/topology.minimal.json) 三个核心字段，执行 `./bin/starhub render --profile minimal --out-dir ./dist-minimal` |
 | **Tier 2 · 全栈参考蓝本 (`full`)** | 跨城多站点 + 独立算力工作站单向隔离 + 云端 AI 沙箱 + 摄像头物理断云闸 | **15 分钟** | 执行 `./bin/starhub init && ./bin/starhub render --out-dir ./dist`（支持 `--only firewall\|mihomo\|ai-sandbox\|lifeline` 按需输出） |
 
 ---
@@ -109,10 +113,10 @@ cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 
 ```bash
 # 1. 一键验真 GitHub OIDC / Sigstore SLSA Build Level 3 密码学构建溯源证书
-gh attestation verify starhub-kit-v1.2.0.tar.gz --repo Ziqi/starhub-kit
+gh attestation verify starhub-kit-v1.3.0.tar.gz --repo Ziqi/starhub-kit
 
 # 2. 离线复核源码归档包的逐比特可重现性（Bit-for-Bit Reproducible Builds）
-./bin/starhub archive --verify-file ./starhub-kit-v1.2.0.tar.gz --prefix starhub-kit-v1.2.0
+./bin/starhub archive --verify-file ./starhub-kit-v1.3.0.tar.gz --prefix starhub-kit-v1.3.0
 ```
 
 本项目基于 [MIT License](./LICENSE) 协议开源。提交 PR 前请先阅读 [GOVERNANCE.md](./GOVERNANCE.md)、[CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)、[CONTRIBUTING.md](./CONTRIBUTING.md) 与 [SECURITY.md](./SECURITY.md)。

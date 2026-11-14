@@ -142,6 +142,21 @@ def mutate_valid_topology(rng: random.Random) -> dict:
         if "127.0.0.1:" not in unit_body or "ExitOnForwardFailure=yes" not in unit_body:
             raise AssertionError("Lifeline systemd unit missing loopback bind or forward guard")
 
+    # Security Invariant 4: Cross-platform nftables, macOS pf, Tailscale ACL & Sing-box invariants
+    nft_body = CTL.render_nftables_sandbox_guard(gt)
+    pf_body = CTL.render_macos_pf_sandbox_anchor(gt)
+    ts_acl = json.loads(CTL.render_tailscale_acl_policy(gt))
+    sb_cfg = json.loads(CTL.render_singbox_guardrails(gt))
+    if "22" not in nft_body or "counter drop" not in nft_body:
+        raise AssertionError("nftables sandbox guard lost port :22 drop invariant")
+    if "block return in quick proto tcp from <starhub_ai_sandboxes>" not in pf_body:
+        raise AssertionError("macOS pf sandbox anchor lost TCP block invariant")
+    for ssh_rule in ts_acl.get("ssh", []):
+        if "tag:ai-sandbox" in ssh_rule.get("src", []):
+            raise AssertionError("Tailscale ACL leaked SSH access to tag:ai-sandbox")
+    if sb_cfg["route"]["rules"][2]["action"] != "reject":
+        raise AssertionError("Sing-box QUIC rule lost UDP/443 reject action")
+
     return gt
 
 
