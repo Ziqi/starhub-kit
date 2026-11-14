@@ -1,6 +1,6 @@
 # StarHub Kit 全域统一变更与故障闭环主台账 (`STARHUB-LEDGER`)
 
-> **版本**：`StarHub Kit v1.0.3`  
+> **版本**：`StarHub Kit v1.1.0`  
 > **设计原则**：告别在多份零散文档中重复抄写流水的传统做法，一切**架构演进 `[UPD]`**、**缺陷根因闭环 `[BUGFIX]`** 与**算力工作站专项变更 `[WORKSTATION]`** 均按时间倒序（Append-Only，最新在最上方）统一追加于本账本。  
 > **关联索引**：
 > - 静态机器事实源（SSOT）：[STARHUB_GROUND_TRUTH.json](../../STARHUB_GROUND_TRUTH.json) · [mihomo-shared-guardrails.yaml](../../scripts/profiles/mihomo-shared-guardrails.yaml)
@@ -13,6 +13,7 @@
 
 | 条目 ID | 标签 | 日期 | 涉及模块 | 一句话摘要 |
 |---|---|---|---|---|
+| [UPD-20261114-001](#upd-20261114-001) | `[UPD][UX][OSS]` | 2026-11-14 | `profiles` / `starhub-ctl` / `docs` | **StarHub Kit `v1.1.0` 三级轻量化接入矩阵与英文协议排障手册发布**：新增零编译即贴即用规则包 `standalone-mihomo-tailscale-guardrails.yaml`、`StarHub Lite` 单网关极简模板（`--profile minimal`）及英文核心协议深潜手册 `ARCHITECTURE-AND-PLAYBOOK-EN.md` |
 | [UPD-20261113-004](#upd-20261113-004) | `[UPD][SECURITY][OSS]` | 2026-11-13 | 全仓拓扑 / `README` / `starhub-ctl` / `starhub-doctor` | **StarHub Kit `v1.0.3` 获颁 OpenSSF Silver 银牌认证（`#16658`）、全量角色化去指纹重构与移动端 Gmail `Section 9a` 前置规则同步**：正式挂载 OpenSSF Best Practices `Silver` 徽章（`200%`），将全部节点/IoT/出口重构为通用中立工程角色，补齐移动端 Gmail 内嵌图/附件 `UDP/443 REJECT` 前置防遮蔽母版，并升级 `--verify-public-export` 硬件画像反泄露门禁 |
 | [UPD-20261113-003](#upd-20261113-003) | `[UPD][SECURITY][OSS]` | 2026-11-13 | `.github` / `scripts` / `tests` / `GOVERNANCE.md` | **StarHub Kit `v1.0.2` SLSA Level 3 证书、SPDX 2.3 SBOM 与 OpenSSF Silver 银牌基线落地**：新增 Sigstore OIDC `SLSA Build Level 3` 构建溯源证书工作流、`SPDX-2.3` SBOM 生成器、`fsfe/reuse-action` 强校验、`SECURITY-INSIGHTS.yml`、`GOVERNANCE.md` / `CODE_OF_CONDUCT.md` 及 `>=80%` 语句覆盖率 CI 门禁 |
 | [UPD-20261113-002](#upd-20261113-002) | `[UPD][SECURITY][OSS]` | 2026-11-13 | `tests` / `.github` / `SECURITY.md` | **StarHub Kit `v1.0.1` OpenSSF 深度供应链加固**：新增 `atheris` + 标准库双模模糊测试引擎（`tests/fuzz_starhub_ctl.py`）、`CODEOWNERS` 与分支保护、CodeQL `v4.39.3` 成组原子更新，以及 Ed25519 + SLSA/in-toto 签名溯源发布 |
@@ -22,6 +23,16 @@
 ---
 
 ## 二、详细变更与闭环流水（Chronological Details · Newest First）
+
+### UPD-20261114-001
+- **标题**：`[UPD][UX][OSS]` StarHub Kit `v1.1.0` 三级渐进轻量化版本（`Tier 0` 免编译规则包 + `Tier 1` 单网关 `minimal` 模板）与英文协议排障手册上线
+- **日期**：`2026-11-14`
+- **核心交付清单**：
+  1. **Tier 0 免编译黄金规则包（[standalone-mihomo-tailscale-guardrails.yaml](../../scripts/profiles/standalone-mihomo-tailscale-guardrails.yaml)）**：由编译器确定性生成并纳入 `render --check` 零漂移门禁，普通 OpenWrt / Clash Verge + Tailscale 用户无需运行 Python 即可在 30 秒内复制粘贴解决 Fake-IP 回环、DNS 竞速断流与 Apple/Gmail 移动端 QUIC 黑洞。
+  2. **Tier 1 单网关轻量版（[profiles/topology.minimal.json](../../profiles/topology.minimal.json) + `./bin/starhub render --profile minimal`）**：支持 `panel`、`home`、`derp`、`workstation`、`vps2/3` 等高阶节点缺省优雅裁剪，仅需「1 台网关 + 1 台电脑 + 1 个出口」即可编译生成精简网关包。
+  3. **英文协议与安全深潜手册（[ARCHITECTURE-AND-PLAYBOOK-EN.md](../ARCHITECTURE-AND-PLAYBOOK-EN.md)）**：面向国际社区系统阐述 Tailscale × Fake-IP 防回环、`Section 9a` 精确 QUIC 顺序护栏与云端 AI 沙箱 `B2` 零信任隔离原理。
+
+---
 
 ### UPD-20261113-004
 - **标题**：`[UPD][SECURITY][OSS]` StarHub Kit `v1.0.3` 获颁 OpenSSF Best Practices `Silver` 银牌（`#16658`）、全量角色化中立重构与移动端 Gmail `Section 9a` 护栏合入

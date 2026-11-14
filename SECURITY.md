@@ -35,7 +35,7 @@ When granting cloud AI agents (such as ephemeral container sandboxes) read/actio
   ```
   ```bash
   openssl pkeyutl -verify -pubin -inkey release_ed25519_pub.pem \
-    -rawin -in starhub-kit-v1.0.3.tar.gz -sigfile starhub-kit-v1.0.3.tar.gz.sig
+    -rawin -in starhub-kit-v1.1.0.tar.gz -sigfile starhub-kit-v1.1.0.tar.gz.sig
   ```
 - **SPDX / REUSE 3.2**: All source scripts carry standard SPDX `MIT` license and copyright headers, with repository-wide machine-readable licensing declared in `REUSE.toml`, license text in `LICENSES/MIT.txt`, and citation metadata in `CITATION.cff`.
 - **OpenSSF Best Practices `Silver` Certification (`Project #16658`)**: `starhub-kit` holds an active **OpenSSF Best Practices `Silver`** badge (`tiered_percentage = 200%`: `67/67 Passing` + `55/55 Silver`), publicly verifiable at `https://www.bestpractices.dev/projects/16658` (`https://www.bestpractices.dev/projects/16658.json`).

@@ -1,0 +1,60 @@
+{
+  "schema_version": "3.1.0",
+  "repo_profile": "open_source_kit",
+  "deployment_tier": "minimal",
+  "system_name": "StarHub Kit Lite",
+  "system_version": "v1.1.0",
+  "updated_at": "2026-11-14",
+  "home_lan_cidr": "192.0.2.0/24",
+  "admin_allowlist_nodes": [
+    "laptop",
+    "gw"
+  ],
+  "nodes": {
+    "gw": {
+      "cn_name": "单节点透明网关",
+      "ssh_alias": [
+        "gw"
+      ],
+      "lan_ip": "192.0.2.11",
+      "tailscale_ip": "100.64.0.11",
+      "tailscale_ip6": "2001:db8:a1e0::11",
+      "ports": [
+        22,
+        53,
+        1053,
+        7890,
+        7892,
+        9090
+      ],
+      "role": "Single Transparent Gateway (OpenWrt / Debian / Mini-PC): Mihomo gvisor TUN + Split-DNS + Section 9a QUIC Governance"
+    },
+    "laptop": {
+      "cn_name": "个人主控终端",
+      "ssh_alias": [
+        "laptop"
+      ],
+      "lan_ip": "192.0.2.31",
+      "tailscale_ip": "100.64.0.31",
+      "tailscale_ip6": "2001:db8:a1e0::31",
+      "ports": [
+        22
+      ],
+      "role": "Primary personal workstation/laptop over Tailscale"
+    }
+  },
+  "egress_vps": {
+    "vps1": {
+      "name": "EgressPrimary",
+      "ssh_alias": "vps1",
+      "ip": "198.51.100.11",
+      "port": 443,
+      "ssh_port": 22,
+      "ssh_jump": null,
+      "sni": "cdn.example.com",
+      "provider": "Single VLESS-Reality or Upstream Proxy Egress",
+      "consumers": "All LAN & Tailscale peers via gw"
+    }
+  },
+  "retired_assets_blocklist": []
+}

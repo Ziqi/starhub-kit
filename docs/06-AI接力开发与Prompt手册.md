@@ -1,6 +1,6 @@
 # 06 · AI 接力开发与多智能体协同宪章 (Multi-Agent Governance & Handoff Playbook)
 
-> **版本**：`StarHub Kit v1.0.3`  
+> **版本**：`StarHub Kit v1.1.0`  
 > **关联手册**：[AGENTS.md](../AGENTS.md) · [02-日常运维与变更升级.md](./02-日常运维与变更升级.md) · [SECURITY.md](../SECURITY.md)
 
 ---

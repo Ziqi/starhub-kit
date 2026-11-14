@@ -11,7 +11,7 @@
 [![REUSE 3.2](https://img.shields.io/badge/REUSE-3.2%20SPDX-brightgreen.svg)](https://reuse.software/)
 
 > **Language**: **English** | [简体中文 (Simplified Chinese)](./README.zh-CN.md)  
-> **Version**: `v1.0.3` · **License**: [MIT](./LICENSE) (`SPDX-2.3` / `REUSE 3.2`) · **Certifications**: [OpenSSF Best Practices `Silver` (`#16658`)](https://www.bestpractices.dev/projects/16658) + Sigstore `SLSA Build Level 3` + Ed25519 Signed Releases · **Runtime**: Python 3.9+ (Zero Third-Party Dependencies)
+> **Version**: `v1.1.0` · **License**: [MIT](./LICENSE) (`SPDX-2.3` / `REUSE 3.2`) · **Certifications**: [OpenSSF Best Practices `Silver` (`#16658`)](https://www.bestpractices.dev/projects/16658) + Sigstore `SLSA Build Level 3` + Ed25519 Signed Releases · **Runtime**: Python 3.9+ (Zero Third-Party Dependencies)
 
 **StarHub Kit** is a battle-tested, declarative **Multi-Site Mesh + Anti-Stall Transparent Gateway + Out-of-Band Lifeline + AI-Governed Infrastructure (`EGM 3.0`)** toolkit.
 
@@ -56,6 +56,18 @@ flowchart LR
     GW & WS -->|"Anti-Loop Direct Exemption"| VPS
     GW & WS -.->|"Reverse SSH Lifeline (:2203/:2204)"| DERP
 ```
+
+---
+
+## Choose Your Adoption Tier (30 Seconds to Full Blueprint)
+
+You do **not** need Proxmox VE, dedicated observability hosts, or three overseas relays to benefit from StarHub Kit. Choose the tier that fits your hardware (see the full English deep-dive in [docs/ARCHITECTURE-AND-PLAYBOOK-EN.md](./docs/ARCHITECTURE-AND-PLAYBOOK-EN.md)):
+
+| Tier | Hardware Needed | Setup Time | How to Use |
+|---|---|---|---|
+| **Tier 0 · Drop-In Ruleset** | Any existing **OpenWrt / Clash Verge / Mihomo Party / Stash + Tailscale** setup | **30 seconds** (Zero Python) | Copy `dns:` and `rules:` from [`scripts/profiles/standalone-mihomo-tailscale-guardrails.yaml`](./scripts/profiles/standalone-mihomo-tailscale-guardrails.yaml) directly into your `config.yaml` |
+| **Tier 1 · StarHub Lite (`minimal`)** | **1 Gateway** + **1 Laptop/PC** + **1 Egress** (no PVE, no custom DERP, no extra VMs) | **3 minutes** | Edit 3 items in [`profiles/topology.minimal.json`](./profiles/topology.minimal.json) and run `./bin/starhub render --profile minimal --out-dir ./dist-minimal` |
+| **Tier 2 · Full Blueprint (`full`)** | Multi-site mesh + isolated compute workstation + cloud AI `B2` sandboxes + IoT camera kill-switch | **15 minutes** | `./bin/starhub init && ./bin/starhub render --out-dir ./dist` ([`topology.example.json`](./topology.example.json)) |
 
 ---
 
@@ -115,7 +127,7 @@ Every release and `main` build publishes a **Sigstore + GitHub OIDC `SLSA Build 
 
 ```bash
 # Verify GitHub OIDC / Sigstore SLSA Build Level 3 provenance certificate
-gh attestation verify starhub-kit-v1.0.3.tar.gz --repo Ziqi/starhub-kit
+gh attestation verify starhub-kit-v1.1.0.tar.gz --repo Ziqi/starhub-kit
 ```
 
 Released under the [MIT License](./LICENSE). Please review [GOVERNANCE.md](./GOVERNANCE.md), [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md), [CONTRIBUTING.md](./CONTRIBUTING.md), and [SECURITY.md](./SECURITY.md) (including §5 Threat Model & Assurance Case) before submitting a pull request.

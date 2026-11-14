@@ -1,6 +1,6 @@
 # StarHub Kit Project Governance & Continuity Charter
 
-> **Version**: `v1.0.3` · **License**: [MIT](./LICENSE) · **Related Policies**: [CONTRIBUTING.md](./CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) · [SECURITY.md](./SECURITY.md)
+> **Version**: `v1.1.0` · **License**: [MIT](./LICENSE) · **Related Policies**: [CONTRIBUTING.md](./CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) · [SECURITY.md](./SECURITY.md)
 
 ## 1. Governance Model & Roles
 

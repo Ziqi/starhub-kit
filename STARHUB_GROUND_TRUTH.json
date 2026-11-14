@@ -2,8 +2,8 @@
   "schema_version": "3.1.0",
   "repo_profile": "open_source_kit",
   "system_name": "StarHub Kit",
-  "system_version": "v1.0.3",
-  "updated_at": "2026-11-13",
+  "system_version": "v1.1.0",
+  "updated_at": "2026-11-14",
   "home_lan_cidr": "192.0.2.0/24",
   "admin_allowlist_nodes": [
     "laptop",
@@ -40,40 +40,76 @@
     },
     "pve": {
       "cn_name": "虚拟化宿主机",
-      "ssh_alias": ["pve"],
+      "ssh_alias": [
+        "pve"
+      ],
       "lan_ip": "192.0.2.10",
       "tailscale_4via6": "2001:db8:4a6::10",
-      "ports": [22, 8006],
+      "ports": [
+        22,
+        8006
+      ],
       "role": "Proxmox VE hypervisor (reachable via Tailscale 4via6 without /32 LAN route collision)"
     },
     "gw": {
       "cn_name": "透明网关总闸",
-      "ssh_alias": ["gw", "gw-rescue"],
+      "ssh_alias": [
+        "gw",
+        "gw-rescue"
+      ],
       "lan_ip": "192.0.2.11",
       "lan_vip": "192.0.2.12",
       "tailscale_ip": "100.64.0.11",
       "tailscale_ip6": "2001:db8:a1e0::11",
       "rescue_port": 2203,
-      "ports": [22, 53, 1053, 3939, 7890, 7892, 9090, 9199, 41642],
+      "ports": [
+        22,
+        53,
+        1053,
+        3939,
+        7890,
+        7892,
+        9090,
+        9199,
+        41642
+      ],
       "role": "LXC 100 Transparent Gateway: Mihomo gvisor TUN + Deterministic Split-DNS + Surgical QUIC Governance + Exit Node + Cam-Gate + Lifeline :2203"
     },
     "panel": {
       "cn_name": "观测与控制中枢",
-      "ssh_alias": ["panel"],
+      "ssh_alias": [
+        "panel"
+      ],
       "lan_ip": "192.0.2.15",
       "tailscale_ip": "100.64.0.15",
       "tailscale_ip6": "2001:db8:a1e0::15",
-      "ports": [22, 3001, 41644],
-      "protected_ports": [3001, 3000, 8000, 9443, 9000],
+      "ports": [
+        22,
+        3001,
+        41644
+      ],
+      "protected_ports": [
+        3001,
+        3000,
+        8000,
+        9443,
+        9000
+      ],
       "role": "LXC 102 Observability & SSOT Hub: :3001 health probes + dual-stack allowlist firewall + StarHub EGM 3.0 Doctor"
     },
     "home": {
       "cn_name": "全屋智能与AI中枢",
-      "ssh_alias": ["home"],
+      "ssh_alias": [
+        "home"
+      ],
       "lan_ip": "192.0.2.20",
       "tailscale_ip": "100.64.0.20",
       "tailscale_ip6": "2001:db8:a1e0::20",
-      "ports": [22, 8080, 41643],
+      "ports": [
+        22,
+        8080,
+        41643
+      ],
       "web_port": 8080,
       "app_version": "StarHub Home OS v2.0-spec",
       "cli_version": "shome v2.0-spec",
@@ -81,22 +117,35 @@
     },
     "laptop": {
       "cn_name": "随身主控笔电",
-      "ssh_alias": ["laptop"],
+      "ssh_alias": [
+        "laptop"
+      ],
       "lan_ip": "192.0.2.31",
       "tailscale_ip": "100.64.0.31",
       "tailscale_ip6": "2001:db8:a1e0::31",
-      "ports": [22, 17890],
+      "ports": [
+        22,
+        17890
+      ],
       "role": "Primary controller laptop (127.0.0.1:17890 adaptive loopback tunnel bypassing OS local-network blocks)"
     },
     "workstation": {
       "cn_name": "高吞吐算力工作站",
-      "ssh_alias": ["workstation", "workstation-rescue"],
+      "ssh_alias": [
+        "workstation",
+        "workstation-rescue"
+      ],
       "lan_ip": "192.0.2.32",
       "tailscale_ip": "100.64.0.32",
       "tailscale_ip6": "2001:db8:a1e0::32",
       "rescue_port": 2204,
       "one_way_controlled": true,
-      "ports": [22, 7890, 17890, 19090],
+      "ports": [
+        22,
+        7890,
+        17890,
+        19090
+      ],
       "role": "24/7 Workstation with dedicated egress VPS2 + host firewall outbound/LAN isolation + Lifeline :2204"
     },
     "mobile-tablet": {
@@ -115,32 +164,59 @@
     },
     "site-b-node": {
       "cn_name": "异地常驻边缘节点",
-      "ssh_alias": ["site-b-node", "site-b-node-rescue"],
+      "ssh_alias": [
+        "site-b-node",
+        "site-b-node-rescue"
+      ],
       "lan_ip": "198.51.100.41",
       "tailscale_ip": "100.64.0.41",
       "tailscale_ip6": "2001:db8:a1e0::41",
       "rescue_port": 2202,
-      "ports": [22, 1053, 7890, 9090],
+      "ports": [
+        22,
+        1053,
+        7890,
+        9090
+      ],
       "role": "Site-B always-on Linux/Unix node with local Mihomo 127.0.0.1:7890 + 60s watchdog + Lifeline :2202"
     },
     "gpu-worker": {
       "cn_name": "异地单向受控训练机",
-      "ssh_alias": ["gpu-worker", "gpu-worker-rescue"],
+      "ssh_alias": [
+        "gpu-worker",
+        "gpu-worker-rescue"
+      ],
       "lan_ip": "198.51.100.42",
       "tailscale_ip": "100.64.0.42",
       "rescue_port": 2201,
       "one_way_controlled": true,
-      "ports": [22, 7897, 9097],
+      "ports": [
+        22,
+        7897,
+        9097
+      ],
       "role": "Strictly one-way controlled GPU worker (ForwardAgent no, accept-routes=false, exit-node=\"\", Lifeline :2201)"
     },
     "derp": {
       "cn_name": "自建中继与救命跳板",
-      "ssh_alias": ["derp"],
+      "ssh_alias": [
+        "derp"
+      ],
       "public_ip": "203.0.113.10",
       "tailscale_ip": "100.64.0.254",
       "domain": "derp.example.net",
       "root_domain_suffix": "example.net",
-      "ports": [22, 80, 443, 3478, 8443, 2201, 2202, 2203, 2204],
+      "ports": [
+        22,
+        80,
+        443,
+        3478,
+        8443,
+        2201,
+        2202,
+        2203,
+        2204
+      ],
       "role": "Custom Region 901 DERP (:443->:8443, STUN :3478/udp, bbr+fq) + 4-way reverse SSH Lifeline bastion (127.0.0.1:2201..2204)"
     },
     "agent_sandbox": {
@@ -157,9 +233,19 @@
       "bootstrap_script": "scripts/agent-tailscale-bootstrap.sh",
       "proxy_listen": "127.0.0.1:1055",
       "hostname_prefix": "ai-agent",
-      "warmup_targets": ["100.64.0.15", "100.64.0.20", "100.64.0.31"],
-      "allowed_targets": ["100.64.0.15:3001", "100.64.0.20:8080"],
-      "blocked_chains": ["STARHUB-BOT-NOSSH", "STARHUB-BOT-NOSSH6"],
+      "warmup_targets": [
+        "100.64.0.15",
+        "100.64.0.20",
+        "100.64.0.31"
+      ],
+      "allowed_targets": [
+        "100.64.0.15:3001",
+        "100.64.0.20:8080"
+      ],
+      "blocked_chains": [
+        "STARHUB-BOT-NOSSH",
+        "STARHUB-BOT-NOSSH6"
+      ],
       "role": "Ephemeral cloud AI sandbox pool: isolated /tmp/tailscale-<id> per instance, allowed ONLY Web APIs (:3001/:8080), hard-dropped on :22 SSH"
     }
   },
@@ -212,13 +298,19 @@
     "smart_tv": {
       "lan_ip": "192.0.2.63",
       "mac": "00:53:00:00:00:03",
-      "ports": [6095, 49152, 5555],
+      "ports": [
+        6095,
+        49152,
+        5555
+      ],
       "guardrail": "Keep global Android proxy :0 for domestic CDN apps; bind proxy inside dedicated cross-border streaming app only; use soft-black-screen standby instead of keycode 223"
     },
     "smart_speaker": {
       "lan_ip": "192.0.2.64",
       "mac": "00:53:00:00:00:04",
-      "ports": [7000],
+      "ports": [
+        7000
+      ],
       "guardrail": "LAN TTS & voice Q&A via pyatv (pin srptools==1.0.1 + process mutex)"
     }
   },
@@ -244,6 +336,7 @@
     "docs/04-日志与审计索引.md",
     "docs/05-智能家居与AI中枢全景.md",
     "docs/06-AI接力开发与Prompt手册.md",
+    "docs/ARCHITECTURE-AND-PLAYBOOK-EN.md",
     "docs/ROADMAP-v2.md",
     "docs/ops/STARHUB-LEDGER.md",
     "scripts/starhub-gw-root-README.md"

@@ -11,7 +11,7 @@
 [![REUSE 3.2](https://img.shields.io/badge/REUSE-3.2%20SPDX-brightgreen.svg)](https://reuse.software/)
 
 > **语言切换 (Language)**：[English](./README.md) | **简体中文**  
-> **版本**：`v1.0.3` · **开源协议**：[MIT](./LICENSE)（兼容 `SPDX-2.3` / `REUSE 3.2`） · **权威认证**：[OpenSSF Best Practices `Silver` 银牌（`#16658`）](https://www.bestpractices.dev/projects/16658) + Sigstore `SLSA Build Level 3` + Ed25519 离线签名 · **运行依赖**：Python 3.9+ 标准库（零第三方依赖）
+> **版本**：`v1.1.0` · **开源协议**：[MIT](./LICENSE)（兼容 `SPDX-2.3` / `REUSE 3.2`） · **权威认证**：[OpenSSF Best Practices `Silver` 银牌（`#16658`）](https://www.bestpractices.dev/projects/16658) + Sigstore `SLSA Build Level 3` + Ed25519 离线签名 · **运行依赖**：Python 3.9+ 标准库（零第三方依赖）
 
 **StarHub Kit（星枢开源套件）** 是一套经过跨地域多站点 7×24 实战锤炼的 **声明式异地零撞段组网 + 抗断流透明网关 + 带外反向救命绳 + AI 防幻觉工程治理（`StarHub EGM 3.0`）** 开源基础设施脚手架。
 
@@ -27,6 +27,18 @@
 | **2. 透明网关跨洋半开断流与移动端 QUIC 黑洞**<br/>盲目配置 DNS `fallback:` 双发竞速导致日均数百次 `context canceled`；Apple 流媒体与移动端 Gmail 内嵌图片/附件因跨境 XUDP `UDP/443` 黑洞干等 50s，而粗暴封杀全局 `UDP/443` 又会误伤 YouTube Cronet 字幕。 | **确定性分域 DNS + `Section 9a` 前置手术刀级 QUIC 治理**<br/>彻底移除 `fallback:` 竞速（纯 `nameserver-policy` 确定性路由），在广义 Google 代理规则上方（`Section 9a`）对 Apple 媒体与 Gmail/附件精确域名执行 `UDP/443 REJECT`，并由 `doctor` 自动校验零误伤 YouTube Cronet。 |
 | **3. 云端 AI 沙箱撞号失步与内网横向渗透风险**<br/>多实例云端 Agent 共用 Tailscale 状态文件会引发 `NodeKey` 抢占断流；若直接放通内网更会暴露 `:22` SSH 与容器管理口。 | **`B2` 受限访客直通沙箱协议**<br/>通过 `agent-tailscale-bootstrap.sh` 按实例隔离 `/tmp/tailscale-<id>`，双栈防火墙 `STARHUB-BOT-NOSSH` / `NOSSH6` 仅放行 `:3001`/`:8080` Web API，硬件级 `DROP` 全部 `:22` SSH。 |
 | **4. 运维文档腐败膨胀、配置漂移与资产指纹泄露风险**<br/>几十份历史 Markdown 互相打架，AI 助手反复读取旧 IP 产生幻觉；想开源架构又担心泄露真实 IP、服务商与个人硬件设备清单。 | **StarHub EGM 3.0（「1 核 + 6 册 + 2 账」）**<br/>根部 `AGENTS.md`（`CLAUDE.md`/`GROK.md` 软链归一）、全角色化中立拓扑、`render --check` 零漂移校验，以及扫描工作树与 `.git` 全历史的 `--verify-public-export` 数学级反泄露门禁。 |
+
+---
+
+## 三级渐进接入指南（无需满配硬件 · 30 秒即可上手）
+
+您**不需要**拥有 Proxmox 虚拟化集群、独立监控机或三台海外 VPS 也能直接使用本套件（英文协议深潜速查见 [docs/ARCHITECTURE-AND-PLAYBOOK-EN.md](./docs/ARCHITECTURE-AND-PLAYBOOK-EN.md)）：
+
+| 接入层级 | 所需设备门槛 | 上手耗时 | 使用方式 |
+|---|---|---|---|
+| **Tier 0 · 免编译即贴即用包** | 任何现成的 **OpenWrt / Clash Verge / Mihomo Party / Stash + Tailscale** 用户 | **30 秒**（零代码） | 直接复制 [`scripts/profiles/standalone-mihomo-tailscale-guardrails.yaml`](./scripts/profiles/standalone-mihomo-tailscale-guardrails.yaml) 中的 `dns:` 与 `rules:` 段粘贴至现有配置 |
+| **Tier 1 · 单网关轻量版 (`minimal`)** | 仅需 **1 台旁路由/Mini主机 + 1 台电脑 + 1 个出口**（无需 PVE、无需自建 DERP） | **3 分钟** | 修改 [`profiles/topology.minimal.json`](./profiles/topology.minimal.json) 三个核心字段，执行 `./bin/starhub render --profile minimal --out-dir ./dist-minimal` |
+| **Tier 2 · 全栈参考蓝本 (`full`)** | 跨城多站点 + 独立算力工作站单向隔离 + 云端 AI 沙箱 `B2` + 摄像头物理断云闸 | **15 分钟** | 执行 `./bin/starhub init && ./bin/starhub render --out-dir ./dist`（基于 [`topology.example.json`](./topology.example.json)） |
 
 ---
 
@@ -76,7 +88,7 @@ cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 
 ```bash
 # 一键验真 GitHub OIDC / Sigstore SLSA Build Level 3 密码学构建溯源证书
-gh attestation verify starhub-kit-v1.0.3.tar.gz --repo Ziqi/starhub-kit
+gh attestation verify starhub-kit-v1.1.0.tar.gz --repo Ziqi/starhub-kit
 ```
 
 本项目基于 [MIT License](./LICENSE) 协议开源。提交 PR 前请先阅读 [GOVERNANCE.md](./GOVERNANCE.md)、[CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)、[CONTRIBUTING.md](./CONTRIBUTING.md) 与 [SECURITY.md](./SECURITY.md)（含第 5 节架构威胁模型与安全保证论证）。

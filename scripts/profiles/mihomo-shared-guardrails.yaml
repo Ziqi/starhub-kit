@@ -10,7 +10,7 @@
 # ==============================================================================
 {
   "schema_version": "3.0.0",
-  "updated_at": "2026-11-13",
+  "updated_at": "2026-11-14",
   "gw_dns_invariants": {
     "require_respect_rules": true,
     "forbid_blind_fallback": true,

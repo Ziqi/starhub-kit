@@ -1,6 +1,6 @@
 # starhub-gw (192.0.2.11 + VIP .12 / 100.64.0.11 / LXC 100) 本机运维说明卡
 
-> **版本**：`StarHub Kit v1.0.3` · **权威事实源**：`STARHUB_GROUND_TRUTH.json` + `scripts/profiles/mihomo-shared-guardrails.yaml`
+> **版本**：`StarHub Kit v1.1.0` · **权威事实源**：`STARHUB_GROUND_TRUTH.json` + `scripts/profiles/mihomo-shared-guardrails.yaml`
 
 ---
 

@@ -80,7 +80,7 @@ def exercise_suite(ctl_mod, temp_root: pathlib.Path) -> None:
             shutil.copy2(src, temp_root / item)
     for link_name in ("CLAUDE.md", "GROK.md"):
         (temp_root / link_name).symlink_to("AGENTS.md")
-    for sub_dir in ("docs", "scripts", "bin", "templates", "LICENSES"):
+    for sub_dir in ("docs", "scripts", "bin", "templates", "LICENSES", "profiles"):
         shutil.copytree(REPO_ROOT / sub_dir, temp_root / sub_dir)
 
     buf_out, buf_err = io.StringIO(), io.StringIO()
@@ -121,13 +121,19 @@ def exercise_suite(ctl_mod, temp_root: pathlib.Path) -> None:
         assert ctl_mod.cmd_render(temp_root, check_only=False, in_place=False, out_dir=bundle_dir) == 0
         assert (bundle_dir / "ssh_config.starhub").is_file()
         assert (bundle_dir / "mihomo-gateway.yaml").is_file()
+        min_bundle = temp_root / "dist_minimal_direct"
+        assert ctl_mod.cmd_render(temp_root, check_only=False, in_place=False, out_dir=min_bundle, profile="minimal") == 0
+        assert (min_bundle / "mihomo-gateway.yaml").is_file()
+        assert not (min_bundle / "starhub-dash-fw.sh").exists()
 
         # 4. CLI main() dispatch across subcommands (init, render, export-workstation, doctor)
         orig_argv = sys.argv[:]
         try:
+            min_dir = temp_root / "dist_min_test"
             for argv in (
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "init"],
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "render", "--check"],
+                ["starhub-ctl.py", "--repo-root", str(temp_root), "render", "--profile", "minimal", "--out-dir", str(min_dir)],
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "export-workstation"],
                 ["starhub-ctl.py", "--repo-root", str(temp_root), "doctor", "--local-docs-only"],
             ):

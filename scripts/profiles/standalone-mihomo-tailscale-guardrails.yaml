@@ -1,0 +1,80 @@
+# ==============================================================================
+# StarHub Kit (Tier 0) — Standalone Drop-In Mihomo / Clash Meta × Tailscale Pack
+# Zero Python / Zero Compiler Required: Copy-paste `dns:` and `rules:` sections
+# directly into OpenWrt (OpenClash / Nikki), Clash Verge Rev, Mihomo Party, or Stash.
+#
+# Solves 4 real-world bugs immediately:
+#   1. Prevents Fake-IP (198.18.0.0/16) from hijacking Tailscale (*.ts.net / STUN :3478)
+#   2. Eliminates blind `fallback:` DNS racing (`context canceled` & CDN GeoIP pollution)
+#   3. Instant TCP fallback (`UDP/443 REJECT`) for Apple Media & Mobile Gmail attachments
+#   4. Preserves native HTTP/3 QUIC (`UDP/443`) for YouTube 4K Cronet (`googlevideo.com`)
+# ==============================================================================
+
+dns:
+  enable: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.0/16
+  respect-rules: true
+  default-nameserver:
+    - 223.5.5.5
+  nameserver:
+    - https://dns.alidns.com/dns-query
+  # NOTE: Do NOT add a `fallback:` block — deterministic `nameserver-policy` avoids race drops.
+  nameserver-policy:
+    "+.ts.net":
+      - "100.100.100.100#tailscale0"
+    "geosite:cn,private":
+      - "https://dns.alidns.com/dns-query"
+    "geosite:geolocation-!cn":
+      - "https://1.1.1.1/dns-query#EgressPrimary"
+
+rules:
+  # --- [1] Tailscale STUN, Control Plane & CGNAT Anti-Loop Direct Exemptions ---
+  - DST-PORT,3478,DIRECT
+  - DOMAIN-SUFFIX,tailscale.com,DIRECT
+  - DOMAIN-SUFFIX,ts.net,DIRECT
+  - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
+
+  # --- [2] Section 9a: Surgical Apple & Mobile Gmail QUIC (UDP/443 -> REJECT) ---
+  # CRITICAL ORDERING: Keep this block STRICTLY ABOVE any broad `googleapis.com`,
+  # `googleusercontent.com`, or `GEOSITE,google` proxy rules!
+  # Do NOT add `youtube.com` or `googlevideo.com` here so YouTube Cronet keeps HTTP/3.
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,tv.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,itunes.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,media.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,apps.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,apis.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,music.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,videos.apple.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,mzstatic.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,aaplimg.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,itunes.apple.com.edgesuite.net)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,itunes-apple.com.akadns.net)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,apple.map.fastly.net)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,mail.google.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,inbox.google.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,gmail.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,oauth2.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,oauthaccountmanager.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,gogaccountservice-pa.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,notifications-pa.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,peoplestack-pa.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,taskassist-pa.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,addons-pa.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,appsgenaiserver-pa.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,robinfrontend-pa.googleapis.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,mail-attachment.googleusercontent.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,ci3.googleusercontent.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,ci4.googleusercontent.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,ci5.googleusercontent.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,ci6.googleusercontent.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,lh3.googleusercontent.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,lh4.googleusercontent.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,lh5.googleusercontent.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,lh6.googleusercontent.com)),REJECT
+
+  # --- [3] Place your standard GeoSite / GeoIP / Proxy rules below this line ---
+  # - GEOSITE,cn,DIRECT
+  # - GEOIP,CN,DIRECT,no-resolve
+  # - MATCH,EgressPrimary

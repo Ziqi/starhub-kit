@@ -4,8 +4,8 @@ title: "StarHub Kit: Declarative Zero-Collision Mesh, Anti-Stall Gateway & AI-Go
 type: software
 authors:
   - name: "StarHub Contributors"
-version: 1.0.3
-date-released: "2026-11-13"
+version: 1.1.0
+date-released: "2026-11-14"
 license: MIT
 repository-code: "https://github.com/Ziqi/starhub-kit"
 url: "https://github.com/Ziqi/starhub-kit"
