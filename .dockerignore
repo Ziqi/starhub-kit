@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 StarHub Contributors
+# SPDX-License-Identifier: MIT
+.git
+.github
+__pycache__
+*.pyc
+*.pyo
+dist
+dist-*
+dist_*
+.pytest_cache
+tests
+assets
+docs
