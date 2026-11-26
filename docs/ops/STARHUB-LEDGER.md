@@ -13,6 +13,7 @@
 
 | 条目 ID | 标签 | 日期 | 涉及模块 | 一句话摘要 |
 |---|---|---|---|---|
+| [UPD-20261126-001](#upd-20261126-001) | `[UPD][NET][HARDENING]` | 2026-11-26 | `starhub-ctl` / `starhub-doctor` / `templates` / `docs` | **五项一线生产组网加固净室反哺**：消除海外 DoH/DoT 单节点 SPOF（改绑 `#AutoSelect` + `doctor`/`audit` 双重防回退门禁）、内置多客户端源 IP 物理隔离（`DevDedicated`/`MediaDedicated` 保国内直连）与实时语音单跳隔离（`VoiceRealtime`）、升级 `sing-box` 双端口（`:8080 + :443`）模板，并补齐热重载防 60s `unknown` 盲窗与 Ubuntu 24.04 SSH 避坑 SOP |
 | [UPD-20261114-003](#upd-20261114-003) | `[UPD][SECURITY][MCP]` | 2026-11-14 | `starhub-ctl` / `profiles` / `tests` / `README` | **StarHub Kit `v1.3.0` 自主 AI 沙箱防火墙预设（`ai-sandbox`）、跨平台四后端（`nftables` / `macOS pf` / `Tailscale ACL` / `Sing-box`）与零依赖原生 `MCP Server` 发布**：打通 Claude Code / Cursor / Codex 内网防渗透隔离与主流操作系统/代理栈一键导出 |
 | [UPD-20261114-002](#upd-20261114-002) | `[UPD][UX][SECURITY]` | 2026-11-14 | `starhub-ctl` / `README` / `SECURITY` / `flake.nix` | **StarHub Kit `v1.2.0` 模块化无特权预览（`--only` + `--dry-run`）、逐比特可重现归档（`archive --verify`）、原生 Nix Flake 与 OSPS Baseline L3 对齐发布**：降低外部上手门槛，首屏去内部代号化并内嵌 15 秒高清矢量终端动图 |
 | [UPD-20261114-001](#upd-20261114-001) | `[UPD][UX][OSS]` | 2026-11-14 | `profiles` / `starhub-ctl` / `docs` | **StarHub Kit `v1.1.0` 三级轻量化接入矩阵与英文协议排障手册发布**：新增零编译即贴即用规则包 `standalone-mihomo-tailscale-guardrails.yaml`、`StarHub Lite` 单网关极简模板（`--profile minimal`）及英文核心协议深潜手册 `ARCHITECTURE-AND-PLAYBOOK-EN.md` |
@@ -25,6 +26,16 @@
 ---
 
 ## 二、详细变更与闭环流水（Chronological Details · Newest First）
+
+### UPD-20261126-001
+- **标题**：`[UPD][NET][HARDENING]` 五项一线生产组网加固净室反哺（DoH 防单点故障 / 源 IP 物理隔离 / 热重载防 60s 盲窗 / 双端口 Reality 与新节点初始化防自劫持 / 实时语音单跳隔离）
+- **日期**：`2026-11-26`
+- **核心交付清单**：
+  1. **海外 DoH/DoT 彻底去单节点单点故障（Anti-SPOF `#AutoSelect`）**：将 `starhub-ctl.py`、`mihomo-shared-guardrails.yaml`、`standalone-mihomo-tailscale-guardrails.yaml`、`mihomo-config-backup.yaml` 及 `Sing-box` 分域 DNS 统一改绑故障转移代理组 `#AutoSelect`，并在 `starhub-doctor.py`（`DIM6-MIHOMO-GUARD`）与 `starhub audit` 中新增单节点 DNS 绑定静态拦截门禁。
+  2. **多客户端源 IP 物理隔离与实时语音单跳分流模板**：在 `starhub-ctl.py`（多出口拓扑）与 Tier 0 免编译规则包中内嵌 `DevDedicated`（`192.0.2.31/32`）与 `MediaDedicated`（`192.0.2.63/32`）源 IP 物理隔离规则（先放行局域网与 `GEOIP,private`，国内流媒体 100% `DIRECT`）以及 `VoiceRealtime` 单跳直连 `fallback` 组（隔离 `wisprflow.ai` / `deepgram.com` 避开双跳中转与 `url-test` 抖动）。
+  3. **双端口 Reality 模板、热重载防 60s 盲窗与新节点避坑 SOP**：升级 [templates/singbox-reality-server.json.tmpl](../../templates/singbox-reality-server.json.tmpl) 为 `:8080 + :443` 双端口入站；在 [02-日常运维与变更升级.md](../02-日常运维与变更升级.md)、[03-排障与急救手册.md](../03-排障与急救手册.md) 与 [ARCHITECTURE-AND-PLAYBOOK-EN.md](../ARCHITECTURE-AND-PLAYBOOK-EN.md) 补齐 `PUT /configs?force=true` 后立即触发 `/group/AutoSelect/delay`、新节点 SSH 初始化前先加 `/32 DIRECT` 防 `gvisor TUN` 自劫持，以及 Ubuntu 24.04 `/etc/ssh/sshd_config.d/` `PubkeyAuthentication no` 核查清单。
+
+---
 
 ### UPD-20261114-003
 - **标题**：`[UPD][SECURITY][MCP]` StarHub Kit `v1.3.0` 自主 AI 沙箱防火墙预设（`ai-sandbox`）、跨平台四后端（`nftables` / `macOS pf` / `Tailscale ACL` / `Sing-box`）与零依赖原生 `MCP Server` 发布

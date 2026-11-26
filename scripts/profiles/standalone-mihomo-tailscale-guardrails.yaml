@@ -3,11 +3,14 @@
 # Zero Python / Zero Compiler Required: Copy-paste `dns:` and `rules:` sections
 # directly into OpenWrt (OpenClash / Nikki), Clash Verge Rev, Mihomo Party, or Stash.
 #
-# Solves 4 real-world bugs immediately:
+# Solves 7 real-world production bugs immediately:
 #   1. Prevents Fake-IP (198.18.0.0/16) from hijacking Tailscale (*.ts.net / STUN :3478)
 #   2. Eliminates blind `fallback:` DNS racing (`context canceled` & CDN GeoIP pollution)
-#   3. Instant TCP fallback (`UDP/443 REJECT`) for Apple Media & Mobile Gmail attachments
-#   4. Preserves native HTTP/3 QUIC (`UDP/443`) for YouTube 4K Cronet (`googlevideo.com`)
+#   3. Eliminates single-node DoH/DoT SPOF by binding overseas DNS to failover group `#AutoSelect`
+#   4. Instant TCP fallback (`UDP/443 REJECT`) for Apple Media & Mobile Gmail attachments
+#   5. Preserves native HTTP/3 QUIC (`UDP/443`) for YouTube 4K Cronet (`googlevideo.com`)
+#   6. Optional source-IP physical isolation template (dev laptop / 4K Smart TV, keeping CN DIRECT)
+#   7. Optional real-time voice single-hop `fallback` isolation (`wisprflow.ai` / `deepgram.com`)
 # ==============================================================================
 
 dns:
@@ -20,17 +23,42 @@ dns:
     - 223.5.5.5
   nameserver:
     - https://dns.alidns.com/dns-query
-  # NOTE: Do NOT add a `fallback:` block — deterministic `nameserver-policy` avoids race drops.
+  # NOTE: Do NOT add a `fallback:` block, and NEVER pin overseas DoH/DoT to a single proxy node!
+  # Binding `#AutoSelect` (a `fallback` proxy-group) ensures DNS auto-recovers if one egress dies.
   nameserver-policy:
     "+.ts.net":
       - "100.100.100.100#tailscale0"
     "geosite:cn,private":
       - "https://dns.alidns.com/dns-query"
     "geosite:geolocation-!cn":
-      - "https://1.1.1.1/dns-query#EgressPrimary"
+      - "https://1.1.1.1/dns-query#AutoSelect"
+
+# Optional proxy-groups pattern (uncomment and replace proxy names to enable):
+# proxy-groups:
+#   - name: "AutoSelect"
+#     type: fallback          # Or `url-test` (tolerance: 50) for regular traffic
+#     url: "https://www.gstatic.com/generate_204"
+#     interval: 120
+#     proxies: ["EgressPrimary", "EgressWorkstation", "EgressBackup"]
+#   - name: "DevDedicated"
+#     type: fallback
+#     url: "https://www.gstatic.com/generate_204"
+#     interval: 120
+#     proxies: ["EgressWorkstation", "EgressPrimary", "EgressBackup"]
+#   - name: "MediaDedicated"
+#     type: fallback
+#     url: "https://www.gstatic.com/generate_204"
+#     interval: 120
+#     proxies: ["EgressBackup", "EgressPrimary"]
+#   - name: "VoiceRealtime"
+#     type: fallback          # Single-hop only (bypass double-hop relays & url-test flap)
+#     url: "https://www.gstatic.com/generate_204"
+#     interval: 60
+#     proxies: ["EgressPrimary", "EgressWorkstation"]
 
 rules:
   # --- [1] Tailscale STUN, Control Plane & CGNAT Anti-Loop Direct Exemptions ---
+  # Tip: Always add a new egress server's `/32,DIRECT,no-resolve` BEFORE SSH bootstrap!
   - DST-PORT,3478,DIRECT
   - DOMAIN-SUFFIX,tailscale.com,DIRECT
   - DOMAIN-SUFFIX,ts.net,DIRECT
@@ -74,7 +102,18 @@ rules:
   - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,lh5.googleusercontent.com)),REJECT
   - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,lh6.googleusercontent.com)),REJECT
 
-  # --- [3] Place your standard GeoSite / GeoIP / Proxy rules below this line ---
+  # --- [3] Optional Real-Time Voice Single-Hop Isolation (uncomment with VoiceRealtime group) ---
+  # - DOMAIN-SUFFIX,wisprflow.ai,VoiceRealtime
+  # - DOMAIN-SUFFIX,deepgram.com,VoiceRealtime
+
+  # --- [4] Optional Multi-Client Source-IP Physical Isolation (LAN & CN streaming stay DIRECT) ---
+  # - GEOIP,private,DIRECT,no-resolve
+  # - AND,((SRC-IP-CIDR,192.0.2.31/32),(NOT,((GEOSITE,cn))),(NOT,((GEOIP,cn,no-resolve)))),DevDedicated
+  # - AND,((SRC-IP-CIDR,192.0.2.63/32),(NOT,((GEOSITE,cn))),(NOT,((GEOIP,cn,no-resolve)))),MediaDedicated
+
+  # --- [5] Place your standard GeoSite / GeoIP / Source-IP fallback / Proxy rules below ---
   # - GEOSITE,cn,DIRECT
   # - GEOIP,CN,DIRECT,no-resolve
-  # - MATCH,EgressPrimary
+  # - SRC-IP-CIDR,192.0.2.31/32,DevDedicated,no-resolve
+  # - SRC-IP-CIDR,192.0.2.63/32,MediaDedicated,no-resolve
+  # - MATCH,AutoSelect

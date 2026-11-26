@@ -1,4 +1,6 @@
 # StarHub 3.0 Deterministic Transparent Gateway Config Skeleton (chmod 0600 on live host)
+# Hot-reload tip: right after `PUT /configs?force=true`, trigger `/group/AutoSelect/delay`
+# to eliminate the 60s `unknown` blind window on first-minute outbound traffic.
 mixed-port: 7890
 redir-port: 7892
 allow-lan: true
@@ -38,7 +40,7 @@ dns:
     "geosite:cn,private":
       - "https://dns.alidns.com/dns-query"
     "geosite:geolocation-!cn":
-      - "https://1.1.1.1/dns-query#EgressPrimary"
+      - "https://1.1.1.1/dns-query#AutoSelect"
 
 proxies:
   - name: "EgressPrimary"
@@ -85,14 +87,33 @@ proxies:
       short-id: "<REPLACE_WITH_SHORT_ID>"
 
 proxy-groups:
-  - name: "PROXY"
+  - name: "AutoSelect"
     type: fallback
     url: "https://www.gstatic.com/generate_204"
     interval: 120
     proxies: ["EgressPrimary", "EgressWorkstation", "EgressRelay"]
+  - name: "PROXY"
+    type: select
+    proxies: ["AutoSelect", "EgressPrimary", "EgressWorkstation", "EgressRelay"]
+  - name: "DevDedicated"
+    type: fallback
+    url: "https://www.gstatic.com/generate_204"
+    interval: 120
+    proxies: ["EgressWorkstation", "EgressPrimary", "EgressRelay"]
+  - name: "MediaDedicated"
+    type: fallback
+    url: "https://www.gstatic.com/generate_204"
+    interval: 120
+    proxies: ["EgressRelay", "EgressPrimary", "EgressWorkstation"]
+  - name: "VoiceRealtime"
+    type: fallback
+    url: "https://www.gstatic.com/generate_204"
+    interval: 60
+    proxies: ["EgressPrimary", "EgressWorkstation"]
 
 rules:
   # Section 1: Tailscale STUN/DERP & Egress Anti-Loop Direct Exemptions
+  # NOTE: Before SSH bootstrap of any new egress VPS, add its /32 DIRECT rule here and hot-reload first.
   - DST-PORT,3478,DIRECT
   - DOMAIN-SUFFIX,tailscale.com,DIRECT
   - DOMAIN-SUFFIX,ts.net,DIRECT
@@ -137,7 +158,17 @@ rules:
   - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,lh4.googleusercontent.com)),REJECT
   - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,lh5.googleusercontent.com)),REJECT
   - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN,lh6.googleusercontent.com)),REJECT
-  # Section 10: Domestic Direct & Default Proxy Routing
+  # Section 9b: Cross-ISP Real-Time Voice Single-Hop Isolation (bypass double-hop relays & url-test flap)
+  - DOMAIN-SUFFIX,wisprflow.ai,VoiceRealtime
+  - DOMAIN-SUFFIX,deepgram.com,VoiceRealtime
+  # Section 9c: Multi-Client Source-IP Physical Isolation (LAN & domestic CN traffic stay 100% DIRECT)
+  - IP-CIDR,192.0.2.0/24,DIRECT,no-resolve
+  - GEOIP,private,DIRECT,no-resolve
+  - AND,((SRC-IP-CIDR,192.0.2.31/32),(NOT,((GEOSITE,cn))),(NOT,((GEOIP,cn,no-resolve)))),DevDedicated
+  - AND,((SRC-IP-CIDR,192.0.2.63/32),(NOT,((GEOSITE,cn))),(NOT,((GEOIP,cn,no-resolve)))),MediaDedicated
+  # Section 10: Domestic Direct, Source-IP Fallbacks & Default Proxy Routing
   - GEOSITE,cn,DIRECT
   - GEOIP,CN,DIRECT,no-resolve
+  - SRC-IP-CIDR,192.0.2.31/32,DevDedicated,no-resolve
+  - SRC-IP-CIDR,192.0.2.63/32,MediaDedicated,no-resolve
   - MATCH,PROXY

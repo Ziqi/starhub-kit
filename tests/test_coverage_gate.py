@@ -122,9 +122,17 @@ def exercise_suite(ctl_mod, temp_root: pathlib.Path) -> None:
         assert ctl_mod.cmd_render(temp_root, check_only=False, in_place=False, out_dir=bundle_dir) == 0
         assert (bundle_dir / "ssh_config.starhub").is_file()
         assert (bundle_dir / "mihomo-gateway.yaml").is_file()
+        gw_yaml = (bundle_dir / "mihomo-gateway.yaml").read_text(encoding="utf-8")
+        assert "https://1.1.1.1/dns-query#AutoSelect" in gw_yaml
+        assert "https://1.1.1.1/dns-query#EgressPrimary" not in gw_yaml
+        assert "DevDedicated" in gw_yaml and "MediaDedicated" in gw_yaml and "VoiceRealtime" in gw_yaml
+        import json as _json
+        sb_tmpl = _json.loads((temp_root / "templates" / "singbox-reality-server.json.tmpl").read_text(encoding="utf-8"))
+        assert [ib["listen_port"] for ib in sb_tmpl["inbounds"]] == [8080, 443]
         min_bundle = temp_root / "dist_minimal_direct"
         assert ctl_mod.cmd_render(temp_root, check_only=False, in_place=False, out_dir=min_bundle, profile="minimal") == 0
         assert (min_bundle / "mihomo-gateway.yaml").is_file()
+        assert "https://1.1.1.1/dns-query#AutoSelect" in (min_bundle / "mihomo-gateway.yaml").read_text(encoding="utf-8")
         assert not (min_bundle / "starhub-dash-fw.sh").exists()
 
         # 4. Modular --only + --dry-run + reproducible archive verification
@@ -225,7 +233,7 @@ def exercise_suite(ctl_mod, temp_root: pathlib.Path) -> None:
                 == 0
             )
 
-        # Audit clean & risky topologies
+        # Audit clean & risky topologies (including single-node DNS pinning SPOF)
         assert ctl_mod.cmd_audit(temp_root, profile="ai-sandbox") == 0
         risky_verdict = ctl_mod.audit_topology_security(
             {
@@ -235,6 +243,17 @@ def exercise_suite(ctl_mod, temp_root: pathlib.Path) -> None:
             }
         )
         assert risky_verdict["passed"] is False and risky_verdict["risk_count"] == 3
+        spof_verdict = ctl_mod.audit_topology_security(
+            {
+                "home_lan_cidr": "192.0.2.0/24",
+                "gw_dns_egress": "EgressPrimary",
+                "admin_allowlist_nodes": ["laptop"],
+                "nodes": {"laptop": {"tailscale_ip": "100.64.0.31"}},
+                "egress_vps": {"vps1": {"name": "EgressPrimary", "ip": "198.51.100.11"}},
+            }
+        )
+        assert spof_verdict["passed"] is False
+        assert any("DNS_SINGLE_POINT_OF_FAILURE" in f for f in spof_verdict["findings"])
 
         # 6. Zero-dependency MCP JSON-RPC 2.0 server (newline + Content-Length framing)
         mcp_requests = [

@@ -6,7 +6,35 @@
   "inbounds": [
     {
       "type": "vless",
-      "tag": "vless-reality-in",
+      "tag": "vless-reality-8080",
+      "listen": "::",
+      "listen_port": 8080,
+      "users": [
+        {
+          "name": "starhub-node",
+          "uuid": "<REPLACE_WITH_UUID_V4>",
+          "flow": "xtls-rprx-vision"
+        }
+      ],
+      "tls": {
+        "enabled": true,
+        "server_name": "cdn.example.com",
+        "reality": {
+          "enabled": true,
+          "handshake": {
+            "server": "cdn.example.com",
+            "server_port": 443
+          },
+          "private_key": "<REPLACE_WITH_SINGBOX_REALITY_PRIVATE_KEY>",
+          "short_id": [
+            "<REPLACE_WITH_HEX_SHORT_ID>"
+          ]
+        }
+      }
+    },
+    {
+      "type": "vless",
+      "tag": "vless-reality-443",
       "listen": "::",
       "listen_port": 443,
       "users": [

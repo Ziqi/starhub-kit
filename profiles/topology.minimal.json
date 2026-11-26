@@ -4,7 +4,8 @@
   "deployment_tier": "minimal",
   "system_name": "StarHub Kit Lite",
   "system_version": "v1.3.0",
-  "updated_at": "2026-11-14",
+  "updated_at": "2026-11-26",
+  "gw_dns_egress": "AutoSelect",
   "home_lan_cidr": "192.0.2.0/24",
   "admin_allowlist_nodes": [
     "laptop",

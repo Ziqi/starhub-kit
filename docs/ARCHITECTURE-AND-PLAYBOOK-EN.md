@@ -25,9 +25,10 @@ Running Tailscale alongside a Fake-IP transparent gateway (`198.18.0.0/16`, `tun
 1. **Fake-IP Hijacking of Tailscale Control & DERP Relays**:
    - If `*.tailscale.com`, `*.ts.net`, STUN (`UDP/3478`), or your egress server IP resolves to a `198.18.x.x` Fake-IP or enters the proxy tunnel, WireGuard handshakes recurse into the proxy tunnel itself and collapse.
    - **Fix**: Pin `+.ts.net` to `100.100.100.100#tailscale0` in `nameserver-policy` and place `DST-PORT,3478,DIRECT`, `DOMAIN-SUFFIX,tailscale.com,DIRECT`, `DOMAIN-SUFFIX,ts.net,DIRECT`, `IP-CIDR,100.64.0.0/10,DIRECT,no-resolve`, and egress `/32` exemptions at the very top of `rules:`.
-2. **Eliminating Blind `fallback:` DNS Racing**:
+2. **Eliminating Blind `fallback:` DNS Racing & Single-Node DoH/DoT SPOF**:
    - Many community Clash templates configure both domestic and overseas resolvers under `nameserver:` + `fallback:`. Under cross-border jitter, slow responses trigger hundreds of `context canceled` half-open sockets per day and poison domestic CDN GeoIP locality.
-   - **Fix**: Remove `fallback:` completely. Enforce `respect-rules: true` with deterministic `nameserver-policy` (`geosite:cn,private` -> domestic DoH; `geosite:geolocation-!cn` -> overseas DoH routed explicitly over `#EgressPrimary`).
+   - Pinning overseas DoH/DoT to a single proxy node (e.g., `#EgressPrimary`) creates a hidden single point of failure: if that one node hits its quota or drops offline, *every* overseas DNS query fails even when backup proxies are healthy.
+   - **Fix**: Remove `fallback:` completely, enforce `respect-rules: true` with deterministic `nameserver-policy`, and bind `geosite:geolocation-!cn` to a **failover proxy-group** (`https://1.1.1.1/dns-query#AutoSelect`). Both `starhub audit` and `starhub-doctor.py` fail closed if single-node DNS pinning creeps back in.
 3. **Zero-Collision `100.x` + `4via6` & TCP MSS Clamping**:
    - Advertising RFC 1918 `/24` LAN routes over Tailscale breaks local Wi-Fi routing whenever a hotel or coffee-shop network uses the same subnet. StarHub uses native `100.64.0.0/10` on containers and Tailscale `4via6` (`fd7a:115c:a1e0::/48`) for non-Tailscale appliances, paired with `iptables -t mangle ... -j TCPMSS --clamp-mss-to-pmtu` and `STARHUB-IPV6-EXIT-GUARD` (`starhub-ts-mss-clamp.sh`) so encapsulated frames never stall on PMTU blackholes or leak native IPv6.
 
@@ -66,7 +67,29 @@ When granting autonomous AI coding agents or cloud sandboxes access to homelab t
 
 ---
 
-## 5. Continuous Verification Commands
+## 5. Production Gateway Hardening Playbook (5 Field-Proven Fixes)
+
+Beyond the baseline split-DNS and `Section 9a` QUIC rules, five subtle production failure modes recur on multi-client transparent gateways and cross-ISP overlays:
+
+1. **Anti-SPOF Overseas DNS (`#AutoSelect`)**:
+   - Never attach an overseas DoH/DoT resolver to a single proxy node (`#EgressPrimary`). Always route `geosite:geolocation-!cn` through a `fallback` proxy-group (`#AutoSelect`) so DNS resolution fails over seamlessly when a single egress VPS goes down or exhausts quota.
+2. **Multi-Client Source-IP Physical Isolation (Keeping Domestic Streaming 100% `DIRECT`)**:
+   - Heavy 4K streaming devices (`smart_tv` `192.0.2.63/32`), primary developer laptops (`laptop` `192.0.2.31/32`), and mobile Exit-Node traffic should not contend on the same upstream egress IP or burn residential quota.
+   - Use semantic IP-suffix / role naming (e.g., `EgressPrimary`, `EgressWorkstation`, high-quota datacenter `EgressBackup`), exempt LAN/private ranges first (`IP-CIDR,192.0.2.0/24,DIRECT,no-resolve`, `GEOIP,private,DIRECT,no-resolve`), then apply `AND,((SRC-IP-CIDR,<client>/32),(NOT,((GEOSITE,cn))),(NOT,((GEOIP,cn,no-resolve)))),<Group>` above broad proxy rules and a matching `SRC-IP-CIDR,<client>/32,<Group>,no-resolve` fallback right above `MATCH,PROXY`. Domestic streaming and local LAN stay 100% `DIRECT` while each client's overseas traffic is isolated cleanly.
+3. **Eliminating the 60-Second `unknown` Blind Window After Mihomo Hot-Reload**:
+   - Right after `PUT /configs?force=true` hot-reloads `/etc/mihomo/config.yaml`, `fallback` and `url-test` groups start with delay `unknown` until the first periodic health-check tick fires (often 60–120s). During that blind window, the first minute of outbound traffic can still be dispatched to a dead or quota-exhausted first member.
+   - **Fix**: Immediately chain a `/group/<Group>/delay` (and/or `/proxies/<Node>/delay`) probe call right after `PUT /configs?force=true` (see [docs/02-日常运维与变更升级.md](./02-日常运维与变更升级.md)) so failover converges within 1–2 seconds of reload.
+4. **New Egress Bootstrap Against `gvisor TUN` Self-Hijack, Ubuntu 24.04 SSH Override & Dual-Port Reality (`:8080 + :443`)**:
+   - **Pre-SSH Anti-Loop**: When provisioning a new egress VPS from behind a transparent `gvisor TUN` gateway, add `IP-CIDR,<new_vps_ip>/32,DIRECT,no-resolve` to `rules:` and hot-reload *before* initiating SSH bootstrap — otherwise the gateway intercepts your own SSH session into the proxy tunnel or loops during sing-box cutover.
+   - **Ubuntu 24.04 Cloud-Image SSH Gotcha**: Many Ubuntu 24.04 cloud images ship `/etc/ssh/sshd_config.d/50-cloud-init.conf` (or vendor drop-ins) containing `PubkeyAuthentication no` or `PasswordAuthentication yes`, which silently overrides `/etc/ssh/sshd_config`. Always verify effective policy with `sshd -T | grep -E 'pubkeyauthentication|permitrootlogin'` before closing your initial root session.
+   - **Dual-Port Reality (`:8080 + :443`)**: Some residential dual-ISP lines intermittently throttle or drop `:443` toward specific ASNs. [`templates/singbox-reality-server.json.tmpl`](../templates/singbox-reality-server.json.tmpl) listens simultaneously on `8080` (`vless-reality-8080`) and `443` (`vless-reality-443`) so clients can fail over ports without re-provisioning the server.
+5. **Cross-ISP Real-Time Voice Single-Hop Isolation (`VoiceRealtime`)**:
+   - Latency-sensitive real-time ASR / voice streams (e.g., `wisprflow.ai`, `deepgram.com`) break audibly when routed through double-hop relays or oscillating `url-test` groups.
+   - Keep regular browsing on `url-test` / `AutoSelect`, while binding real-time voice domains to a dedicated single-hop `fallback` group (`VoiceRealtime`) that contains **only** direct single-hop egress nodes (excluding relays).
+
+---
+
+## 6. Continuous Verification Commands
 
 ```bash
 # 1. Compile minimal single-gateway bundle (Tier 1 StarHub Lite)

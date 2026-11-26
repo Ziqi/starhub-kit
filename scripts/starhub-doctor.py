@@ -676,7 +676,9 @@ def check_dim5_iot_ssot(runner: CheckRunner, repo_root: pathlib.Path, gt: dict) 
                 runner.fail(sec, f"{fn} 检测到违规 Emoji 字符: emoji_count={cnt}")
 
 
-def check_dim6_mihomo_repo(runner: CheckRunner, repo_root: pathlib.Path, g: dict) -> str:
+def check_dim6_mihomo_repo(
+    runner: CheckRunner, repo_root: pathlib.Path, g: dict, gt: dict | None = None
+) -> str:
     sec = "DIM6-MIHOMO-GUARD"
     backup_path = repo_root / "scripts" / "mihomo-config-backup.yaml"
     if not backup_path.is_file():
@@ -702,6 +704,41 @@ def check_dim6_mihomo_repo(runner: CheckRunner, repo_root: pathlib.Path, g: dict
         runner.ok(sec, "DNS respect-rules: true 已启用")
     else:
         runner.fail(sec, "DNS 缺失 respect-rules: true")
+
+    # Anti-SPOF check: overseas DoH/DoT inside `dns:` must NEVER pin a raw single proxy node
+    single_proxy_nodes: set[str] = set()
+    if isinstance(gt, dict):
+        for vps in (gt.get("egress_vps") or {}).values():
+            if isinstance(vps, dict) and vps.get("name"):
+                single_proxy_nodes.add(str(vps["name"]).strip())
+    in_dns = False
+    in_proxies = False
+    dns_lines: list[str] = []
+    for ln in active_lines:
+        if not ln.startswith((" ", "\t")) and ":" in ln:
+            top_key = ln.split(":", 1)[0].strip()
+            in_dns = top_key == "dns"
+            in_proxies = top_key == "proxies"
+            continue
+        if in_dns:
+            dns_lines.append(ln)
+        elif in_proxies:
+            m_pname = re.match(r'^\s*-\s*name:\s*["\']?([^"\']+)["\']?\s*$', ln)
+            if m_pname:
+                single_proxy_nodes.add(m_pname.group(1).strip())
+    pinned_spof: list[str] = []
+    for dln in dns_lines:
+        for m_tag in re.finditer(r'(?:https|tls)://[^\s"\']+#([A-Za-z0-9_.-]+)', dln):
+            tag = m_tag.group(1).strip()
+            if tag in single_proxy_nodes:
+                pinned_spof.append(f"#{tag}")
+    if pinned_spof:
+        runner.fail(
+            sec,
+            f"DNS 存在单节点单点故障绑定 {sorted(set(pinned_spof))}（海外 DoH/DoT 必须指向 AutoSelect/PROXY 故障转移代理组）",
+        )
+    else:
+        runner.ok(sec, "海外 DoH/DoT 严格绑定故障转移代理组（零单节点 DNS 单点故障）")
 
     for dom_key, upstream in g["gw_dns_invariants"]["required_nameserver_policy_pairs"]:
         pat_multiline = f'"{dom_key}": - "{upstream}"'
@@ -1034,7 +1071,7 @@ def main() -> int:
     check_dim3_anti_corrupt(runner, repo_root, gt)
     check_dim4_secret_guard(runner, repo_root)
     check_dim5_iot_ssot(runner, repo_root, gt)
-    backup_text = check_dim6_mihomo_repo(runner, repo_root, g)
+    backup_text = check_dim6_mihomo_repo(runner, repo_root, g, gt)
     check_dim7_fw_repo(runner, repo_root, gt)
 
     if not args.local_docs_only:

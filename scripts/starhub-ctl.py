@@ -447,14 +447,14 @@ EOF
 
 
 def render_mihomo_guardrails(gt: dict) -> str:
-    updated_at = gt.get("updated_at", "2026-11-13")
+    updated_at = gt.get("updated_at", "2026-11-26")
     ssot_path = gt.get("ssot_workspace", {}).get("path", "/opt/starhub-kit")
     nodes = gt.get("nodes", {})
     derp = nodes.get("derp", {}) if isinstance(nodes.get("derp"), dict) else {}
     derp_suffix = derp.get("root_domain_suffix", "")
     derp_ip = derp.get("public_ip", "")
     egress = gt.get("egress_vps", {})
-    primary_egress = next(iter(egress.values()), {"name": "EgressPrimary"})["name"]
+    dns_egress_group = str(gt.get("gw_dns_egress") or "AutoSelect")
 
     anti_loop = [
         "DST-PORT,3478,DIRECT",
@@ -533,10 +533,11 @@ def render_mihomo_guardrails(gt: dict) -> str:
   "gw_dns_invariants": {{
     "require_respect_rules": true,
     "forbid_blind_fallback": true,
+    "forbid_single_node_dns_pinning": true,
     "required_nameserver_policy_pairs": [
       ["+.ts.net", "100.100.100.100#tailscale0"],
       ["geosite:cn,private", "https://dns.alidns.com/dns-query"],
-      ["geosite:geolocation-!cn", "https://1.1.1.1/dns-query#{primary_egress}"]
+      ["geosite:geolocation-!cn", "https://1.1.1.1/dns-query#{dns_egress_group}"]
     ]
   }},
   "mandatory_anti_loop_rules": [
@@ -557,22 +558,22 @@ def render_mihomo_guardrails(gt: dict) -> str:
 
 def render_mihomo_gateway_skeleton(gt: dict) -> str:
     guard = load_json_compatible_from_str(render_mihomo_guardrails(gt))
-    egress = gt.get("egress_vps", {})
-    primary_egress = next(
-        iter(egress.values()),
-        {
-            "name": "EgressPrimary",
-            "ip": "198.51.100.11",
-            "port": 443,
-            "sni": "cdn.example.com",
-        },
-    )
+    egress = gt.get("egress_vps", {}) if isinstance(gt.get("egress_vps"), dict) else {}
+    nodes = gt.get("nodes", {}) if isinstance(gt.get("nodes"), dict) else {}
+    smart_home = gt.get("smart_home_devices", {}) if isinstance(gt.get("smart_home_devices"), dict) else {}
+    dns_egress_group = str(gt.get("gw_dns_egress") or "AutoSelect")
     proxy_lines: list[str] = []
-    proxy_names: list[str] = []
+    raw_proxy_names: list[str] = []
+    single_hop_names: list[str] = []
     for vps in egress.values():
-        proxy_names.append(f'"{vps["name"]}"')
+        if not isinstance(vps, dict) or not vps.get("name"):
+            continue
+        vname = str(vps["name"])
+        raw_proxy_names.append(vname)
+        if "relay" not in vname.lower():
+            single_hop_names.append(vname)
         proxy_lines.append(
-            f"""  - name: "{vps['name']}"
+            f"""  - name: "{vname}"
     type: vless
     server: {vps['ip']}
     port: {vps.get('port', 443)}
@@ -588,8 +589,59 @@ def render_mihomo_gateway_skeleton(gt: dict) -> str:
       short-id: "<REPLACE_WITH_SHORT_ID>" """.rstrip()
         )
 
+    if not raw_proxy_names:
+        raw_proxy_names = ["EgressPrimary"]
+    if not single_hop_names:
+        single_hop_names = list(raw_proxy_names)
+
+    def _quote_join(names: list[str]) -> str:
+        return ", ".join(f'"{n}"' for n in names)
+
+    group_members = _quote_join(raw_proxy_names)
+    proxy_group_blocks: list[str] = [
+        f"""  - name: "{dns_egress_group}"
+    type: fallback
+    url: "https://www.gstatic.com/generate_204"
+    interval: 120
+    proxies: [{group_members}]""",
+        f"""  - name: "PROXY"
+    type: select
+    proxies: ["{dns_egress_group}", {group_members}]""",
+    ]
+
+    laptop_ip = str(nodes.get("laptop", {}).get("lan_ip", "")) if isinstance(nodes.get("laptop"), dict) else ""
+    tv_ip = str(smart_home.get("smart_tv", {}).get("lan_ip", "")) if isinstance(smart_home.get("smart_tv"), dict) else ""
+    lan_cidr = str(gt.get("home_lan_cidr", "192.0.2.0/24"))
+    multi_egress = len(raw_proxy_names) >= 2
+
+    if multi_egress:
+        dev_order = [raw_proxy_names[1], raw_proxy_names[0], *raw_proxy_names[2:]]
+        media_order = [raw_proxy_names[-1], *raw_proxy_names[:-1]]
+        proxy_group_blocks.append(
+            f"""  - name: "DevDedicated"
+    type: fallback
+    url: "https://www.gstatic.com/generate_204"
+    interval: 120
+    proxies: [{_quote_join(dev_order)}]"""
+        )
+        proxy_group_blocks.append(
+            f"""  - name: "MediaDedicated"
+    type: fallback
+    url: "https://www.gstatic.com/generate_204"
+    interval: 120
+    proxies: [{_quote_join(media_order)}]"""
+        )
+        proxy_group_blocks.append(
+            f"""  - name: "VoiceRealtime"
+    type: fallback
+    url: "https://www.gstatic.com/generate_204"
+    interval: 60
+    proxies: [{_quote_join(single_hop_names)}]"""
+        )
+
     rule_sections: list[str] = [
-        "  # Section 1: Tailscale STUN/DERP & Egress Anti-Loop Direct Exemptions"
+        "  # Section 1: Tailscale STUN/DERP & Egress Anti-Loop Direct Exemptions",
+        "  # NOTE: Before SSH bootstrap of any new egress VPS, add its /32 DIRECT rule here and hot-reload first.",
     ]
     rule_sections.extend(f"  - {r}" for r in guard["mandatory_anti_loop_rules"])
     rule_sections.append(
@@ -600,19 +652,51 @@ def render_mihomo_gateway_skeleton(gt: dict) -> str:
     )
     rule_sections.extend(f"  - {r}" for r in guard["apple_quic_reject_rules"])
     rule_sections.extend(f"  - {r}" for r in guard["gmail_quic_reject_rules"])
-    rule_sections.append("  # Section 10: Domestic Direct & Default Proxy Routing")
+
+    bottom_src_fallbacks: list[str] = []
+    if multi_egress:
+        rule_sections.append(
+            "  # Section 9b: Cross-ISP Real-Time Voice Single-Hop Isolation (bypass double-hop relays & url-test flap)"
+        )
+        rule_sections.extend(
+            [
+                "  - DOMAIN-SUFFIX,wisprflow.ai,VoiceRealtime",
+                "  - DOMAIN-SUFFIX,deepgram.com,VoiceRealtime",
+            ]
+        )
+        if laptop_ip or tv_ip:
+            rule_sections.append(
+                "  # Section 9c: Multi-Client Source-IP Physical Isolation (LAN & domestic CN traffic stay 100% DIRECT)"
+            )
+            rule_sections.append(f"  - IP-CIDR,{lan_cidr},DIRECT,no-resolve")
+            rule_sections.append("  - GEOIP,private,DIRECT,no-resolve")
+        if laptop_ip:
+            rule_sections.append(
+                f"  - AND,((SRC-IP-CIDR,{laptop_ip}/32),(NOT,((GEOSITE,cn))),(NOT,((GEOIP,cn,no-resolve)))),DevDedicated"
+            )
+            bottom_src_fallbacks.append(f"  - SRC-IP-CIDR,{laptop_ip}/32,DevDedicated,no-resolve")
+        if tv_ip:
+            rule_sections.append(
+                f"  - AND,((SRC-IP-CIDR,{tv_ip}/32),(NOT,((GEOSITE,cn))),(NOT,((GEOIP,cn,no-resolve)))),MediaDedicated"
+            )
+            bottom_src_fallbacks.append(f"  - SRC-IP-CIDR,{tv_ip}/32,MediaDedicated,no-resolve")
+
+    rule_sections.append("  # Section 10: Domestic Direct, Source-IP Fallbacks & Default Proxy Routing")
     rule_sections.extend(
         [
             "  - GEOSITE,cn,DIRECT",
             "  - GEOIP,CN,DIRECT,no-resolve",
+            *bottom_src_fallbacks,
             "  - MATCH,PROXY",
         ]
     )
     rules_yaml = "\n".join(rule_sections)
     proxies_yaml = "\n".join(proxy_lines)
-    group_members = ", ".join(proxy_names)
+    groups_yaml = "\n".join(proxy_group_blocks)
 
     return f"""# StarHub 3.0 Deterministic Transparent Gateway Config Skeleton (chmod 0600 on live host)
+# Hot-reload tip: right after `PUT /configs?force=true`, trigger `/group/{dns_egress_group}/delay`
+# to eliminate the 60s `unknown` blind window on first-minute outbound traffic.
 mixed-port: 7890
 redir-port: 7892
 allow-lan: true
@@ -652,17 +736,13 @@ dns:
     "geosite:cn,private":
       - "https://dns.alidns.com/dns-query"
     "geosite:geolocation-!cn":
-      - "https://1.1.1.1/dns-query#{primary_egress['name']}"
+      - "https://1.1.1.1/dns-query#{dns_egress_group}"
 
 proxies:
 {proxies_yaml}
 
 proxy-groups:
-  - name: "PROXY"
-    type: fallback
-    url: "https://www.gstatic.com/generate_204"
-    interval: 120
-    proxies: [{group_members}]
+{groups_yaml}
 
 rules:
 {rules_yaml}
@@ -899,8 +979,7 @@ def load_json_compatible_from_str(text: str) -> dict:
 
 def render_standalone_mihomo_guardrails(gt: dict) -> str:
     guard = load_json_compatible_from_str(render_mihomo_guardrails(gt))
-    egress = gt.get("egress_vps", {})
-    primary_name = next(iter(egress.values()), {"name": "PROXY"})["name"]
+    dns_egress_group = str(gt.get("gw_dns_egress") or "AutoSelect")
     apple_lines = "\n".join(f"  - {r}" for r in guard["apple_quic_reject_rules"])
     gmail_lines = "\n".join(f"  - {r}" for r in guard["gmail_quic_reject_rules"])
     return f"""# ==============================================================================
@@ -908,11 +987,14 @@ def render_standalone_mihomo_guardrails(gt: dict) -> str:
 # Zero Python / Zero Compiler Required: Copy-paste `dns:` and `rules:` sections
 # directly into OpenWrt (OpenClash / Nikki), Clash Verge Rev, Mihomo Party, or Stash.
 #
-# Solves 4 real-world bugs immediately:
+# Solves 7 real-world production bugs immediately:
 #   1. Prevents Fake-IP (198.18.0.0/16) from hijacking Tailscale (*.ts.net / STUN :3478)
 #   2. Eliminates blind `fallback:` DNS racing (`context canceled` & CDN GeoIP pollution)
-#   3. Instant TCP fallback (`UDP/443 REJECT`) for Apple Media & Mobile Gmail attachments
-#   4. Preserves native HTTP/3 QUIC (`UDP/443`) for YouTube 4K Cronet (`googlevideo.com`)
+#   3. Eliminates single-node DoH/DoT SPOF by binding overseas DNS to failover group `#{dns_egress_group}`
+#   4. Instant TCP fallback (`UDP/443 REJECT`) for Apple Media & Mobile Gmail attachments
+#   5. Preserves native HTTP/3 QUIC (`UDP/443`) for YouTube 4K Cronet (`googlevideo.com`)
+#   6. Optional source-IP physical isolation template (dev laptop / 4K Smart TV, keeping CN DIRECT)
+#   7. Optional real-time voice single-hop `fallback` isolation (`wisprflow.ai` / `deepgram.com`)
 # ==============================================================================
 
 dns:
@@ -925,17 +1007,42 @@ dns:
     - 223.5.5.5
   nameserver:
     - https://dns.alidns.com/dns-query
-  # NOTE: Do NOT add a `fallback:` block — deterministic `nameserver-policy` avoids race drops.
+  # NOTE: Do NOT add a `fallback:` block, and NEVER pin overseas DoH/DoT to a single proxy node!
+  # Binding `#{dns_egress_group}` (a `fallback` proxy-group) ensures DNS auto-recovers if one egress dies.
   nameserver-policy:
     "+.ts.net":
       - "100.100.100.100#tailscale0"
     "geosite:cn,private":
       - "https://dns.alidns.com/dns-query"
     "geosite:geolocation-!cn":
-      - "https://1.1.1.1/dns-query#{primary_name}"
+      - "https://1.1.1.1/dns-query#{dns_egress_group}"
+
+# Optional proxy-groups pattern (uncomment and replace proxy names to enable):
+# proxy-groups:
+#   - name: "{dns_egress_group}"
+#     type: fallback          # Or `url-test` (tolerance: 50) for regular traffic
+#     url: "https://www.gstatic.com/generate_204"
+#     interval: 120
+#     proxies: ["EgressPrimary", "EgressWorkstation", "EgressBackup"]
+#   - name: "DevDedicated"
+#     type: fallback
+#     url: "https://www.gstatic.com/generate_204"
+#     interval: 120
+#     proxies: ["EgressWorkstation", "EgressPrimary", "EgressBackup"]
+#   - name: "MediaDedicated"
+#     type: fallback
+#     url: "https://www.gstatic.com/generate_204"
+#     interval: 120
+#     proxies: ["EgressBackup", "EgressPrimary"]
+#   - name: "VoiceRealtime"
+#     type: fallback          # Single-hop only (bypass double-hop relays & url-test flap)
+#     url: "https://www.gstatic.com/generate_204"
+#     interval: 60
+#     proxies: ["EgressPrimary", "EgressWorkstation"]
 
 rules:
   # --- [1] Tailscale STUN, Control Plane & CGNAT Anti-Loop Direct Exemptions ---
+  # Tip: Always add a new egress server's `/32,DIRECT,no-resolve` BEFORE SSH bootstrap!
   - DST-PORT,3478,DIRECT
   - DOMAIN-SUFFIX,tailscale.com,DIRECT
   - DOMAIN-SUFFIX,ts.net,DIRECT
@@ -948,10 +1055,21 @@ rules:
 {apple_lines}
 {gmail_lines}
 
-  # --- [3] Place your standard GeoSite / GeoIP / Proxy rules below this line ---
+  # --- [3] Optional Real-Time Voice Single-Hop Isolation (uncomment with VoiceRealtime group) ---
+  # - DOMAIN-SUFFIX,wisprflow.ai,VoiceRealtime
+  # - DOMAIN-SUFFIX,deepgram.com,VoiceRealtime
+
+  # --- [4] Optional Multi-Client Source-IP Physical Isolation (LAN & CN streaming stay DIRECT) ---
+  # - GEOIP,private,DIRECT,no-resolve
+  # - AND,((SRC-IP-CIDR,192.0.2.31/32),(NOT,((GEOSITE,cn))),(NOT,((GEOIP,cn,no-resolve)))),DevDedicated
+  # - AND,((SRC-IP-CIDR,192.0.2.63/32),(NOT,((GEOSITE,cn))),(NOT,((GEOIP,cn,no-resolve)))),MediaDedicated
+
+  # --- [5] Place your standard GeoSite / GeoIP / Source-IP fallback / Proxy rules below ---
   # - GEOSITE,cn,DIRECT
   # - GEOIP,CN,DIRECT,no-resolve
-  # - MATCH,{primary_name}
+  # - SRC-IP-CIDR,192.0.2.31/32,DevDedicated,no-resolve
+  # - SRC-IP-CIDR,192.0.2.63/32,MediaDedicated,no-resolve
+  # - MATCH,{dns_egress_group}
 """
 
 
@@ -1147,14 +1265,13 @@ def render_tailscale_acl_policy(gt: dict) -> str:
 
 
 def render_singbox_guardrails(gt: dict) -> str:
-    egress = gt.get("egress_vps", {}) if isinstance(gt.get("egress_vps"), dict) else {}
-    primary_tag = next(iter(egress.values()), {"name": "proxy-out"}).get("name", "proxy-out")
+    dns_egress_group = str(gt.get("gw_dns_egress") or "AutoSelect")
     cfg = {
         "dns": {
             "servers": [
                 {"tag": "dns-tailscale", "address": "100.100.100.100", "detour": "direct-out"},
                 {"tag": "dns-direct", "address": "https://223.5.5.5/dns-query", "detour": "direct-out"},
-                {"tag": "dns-remote", "address": "https://1.1.1.1/dns-query", "detour": primary_tag},
+                {"tag": "dns-remote", "address": "https://1.1.1.1/dns-query", "detour": dns_egress_group},
             ],
             "rules": [
                 {"domain_suffix": [".ts.net", "tailscale.com"], "server": "dns-tailscale"},
@@ -1182,7 +1299,7 @@ def render_singbox_guardrails(gt: dict) -> str:
                     "action": "reject",
                 },
             ],
-            "final": primary_tag,
+            "final": dns_egress_group,
         },
     }
     return json.dumps(cfg, indent=2) + "\n"
@@ -1220,6 +1337,13 @@ def audit_topology_security(gt: dict) -> dict:
                 port = int(str(target).rsplit(":", 1)[1])
                 if port in dangerous:
                     findings.append(f"SANDBOX_PRIVILEGE_EXPOSURE: agent_sandbox allowed_targets exposes sensitive port :{port} ({target}).")
+    dns_egress = str(gt.get("gw_dns_egress") or "").strip()
+    egress = gt.get("egress_vps", {}) if isinstance(gt.get("egress_vps"), dict) else {}
+    single_node_names = {str(v.get("name", "")).strip() for v in egress.values() if isinstance(v, dict) and v.get("name")}
+    if dns_egress and dns_egress in single_node_names:
+        findings.append(
+            f"DNS_SINGLE_POINT_OF_FAILURE: gw_dns_egress={dns_egress} pins overseas DoH/DoT to a single egress node instead of a failover proxy-group (e.g. AutoSelect)."
+        )
     return {
         "passed": len(findings) == 0,
         "risk_count": len(findings),

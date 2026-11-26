@@ -129,12 +129,16 @@ def mutate_valid_topology(rng: random.Random) -> dict:
         if "STARHUB-BOT-NOSSH6" not in fw_body:
             raise AssertionError(f"{fw_name} firewall lost IPv6 B2 SSH DROP invariant")
 
-    # Security Invariant 2: Mihomo skeleton must never enable blind fallback DNS racing
+    # Security Invariant 2: Mihomo skeleton must never enable blind fallback DNS racing or single-node DNS SPOF
     mihomo_cfg = targets["scripts/mihomo-config-backup.yaml"][0]
     if "\n  fallback:" in mihomo_cfg:
         raise AssertionError("Mihomo skeleton unexpectedly emitted forbidden DNS fallback block")
     if 'secret: ""' not in mihomo_cfg:
         raise AssertionError("Mihomo skeleton leaked non-empty controller secret")
+    if "https://1.1.1.1/dns-query#AutoSelect" not in mihomo_cfg:
+        raise AssertionError("Mihomo skeleton lost failover-group #AutoSelect DNS binding")
+    if "https://1.1.1.1/dns-query#EgressPrimary" in mihomo_cfg:
+        raise AssertionError("Mihomo skeleton regressed to single-node DNS pinning")
 
     # Security Invariant 3: Lifeline systemd units render cleanly for every rescue_port
     units = CTL.render_lifeline_units(gt)

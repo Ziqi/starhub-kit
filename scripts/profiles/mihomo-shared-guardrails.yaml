@@ -10,14 +10,15 @@
 # ==============================================================================
 {
   "schema_version": "3.0.0",
-  "updated_at": "2026-11-14",
+  "updated_at": "2026-11-26",
   "gw_dns_invariants": {
     "require_respect_rules": true,
     "forbid_blind_fallback": true,
+    "forbid_single_node_dns_pinning": true,
     "required_nameserver_policy_pairs": [
       ["+.ts.net", "100.100.100.100#tailscale0"],
       ["geosite:cn,private", "https://dns.alidns.com/dns-query"],
-      ["geosite:geolocation-!cn", "https://1.1.1.1/dns-query#EgressPrimary"]
+      ["geosite:geolocation-!cn", "https://1.1.1.1/dns-query#AutoSelect"]
     ]
   },
   "mandatory_anti_loop_rules": [

@@ -18,7 +18,7 @@
 | **算力工作站** | **`ssh workstation`** / **`ssh workstation-rescue`** (`:2204`) | `192.0.2.32` | `100.64.0.32` | 7×24 高吞吐算力工作站：独享 `vps2` (`198.51.100.12`) 物理分流 + 主机防火墙单向与局域网入站隔离 + `:2204` 救命绳 |
 | **异地边缘节点** | **`ssh site-b-node`** / **`ssh site-b-node-rescue`** (`:2202`) | `198.51.100.41` | `100.64.0.41` | 异地常驻节点：本机 `127.0.0.1:7890` (`0600`) + 60s 自愈看门狗 + `:2202` 救命绳 |
 | **单向受控训练机** | **`ssh gpu-worker`** / **`ssh gpu-worker-rescue`** (`:2201`) | `198.51.100.42` | `100.64.0.42` | 异地 GPU 训练机：**严格单向受控**（`ForwardAgent no`、`accept-routes=false`、`exit-node=""`）+ `:2201` 救命绳 |
-| **海外三出口** | **`ssh vps1` / `vps2` / `vps3`** | `198.51.100.11` / `198.51.100.12` / `198.51.100.13` | — | `sing-box` VLESS-Reality `:443`（全量 `bbr+fq`）：主用出口 `vps1`、工作站专享 `vps2`、中转与异网灾备 `vps3` |
+| **海外三出口** | **`ssh vps1` / `vps2` / `vps3`** | `198.51.100.11` / `198.51.100.12` / `198.51.100.13` | — | `sing-box` VLESS-Reality 双端口 `:8080 + :443`（全量 `bbr+fq`）：主用出口 `vps1`、工作站专享 `vps2`、中转与异网灾备 `vps3` |
 | **自建中继跳板** | **`ssh derp`** | `203.0.113.10` | `100.64.0.254` | 自建 Region `901` DERP（`derp.example.net` `:443->:8443` / STUN `:3478`）+ 四路反向救命绳 `127.0.0.1:2201..2204` |
 | **云端 AI 沙箱** | —（受限访客 `B2`） | — | `100.64.0.201` / `100.64.0.202` | 临时云沙箱池：按实例隔离 `/tmp/tailscale-<id>`，仅放行 `:3001`/`:8080` Web API，`STARHUB-BOT-NOSSH` 硬丢弃 `:22` SSH |
 
@@ -49,7 +49,7 @@
 3. **非对称单向受控原则**：无人值守算力机（`gpu-worker`）永久锁定 `accept-routes=false`、`exit-node=""`、禁用反向 SSH 公钥；主控端连入受控工作站强制配置 `ForwardAgent no` 与 `IdentitiesOnly yes`。
 4. **远程会话免门禁本地回环隧道**：桌面主控机经 SSH/tmux 远程开发时，统一通过豁免门禁的系统原生 `/usr/bin/ssh` 暴露 `127.0.0.1:17890` 回环代理口，规避第三方二进制触发本地网络隐私拦截。
 5. **Tailscale 防环直连豁免**：透明网关 Mihomo 规则顶部必须前置 `DIRECT` 豁免 `*.tailscale.com`、`*.ts.net`、自建 DERP 域名/IP、`DST-PORT,3478`、`100.64.0.0/10` 及全部海外出口公网 IP。
-6. **确定性分域 DNS 与 `Section 9a` 前置 QUIC 治理**：严禁使用盲目双发竞速 `fallback:` 段；开启 `respect-rules: true` 与 `nameserver-policy`；在广义 Google 代理规则上方（`Section 9a`）对 Apple 媒体与 Gmail/内嵌图附件精确域名执行 `UDP/443 REJECT`，**严禁全局封杀 `UDP/443` 或拦截 YouTube Cronet 域名**。
+6. **确定性分域 DNS（防单点故障 `#AutoSelect`）与 `Section 9a/9b/9c` 精细路由**：严禁使用盲目双发竞速 `fallback:` 段，且严禁将海外 DoH/DoT 绑定到单一出口节点（必须绑定 `#AutoSelect` 故障转移组）；热重载后立即触发 `/group/AutoSelect/delay` 消除 60 秒 `unknown` 盲窗；在广义 Google 代理规则上方（`Section 9a`）对 Apple 媒体与 Gmail/内嵌图附件精确域名执行 `UDP/443 REJECT`（**严禁全局封杀 `UDP/443` 或拦截 YouTube Cronet 域名**），并按需启用实时语音单跳隔离（`Section 9b`）与多客户端源 IP 物理隔离（`Section 9c`）。
 7. **智能家居局域网自治与软待机守则**：IoT 摄像头通过网关 `mangle FORWARD` 实现一键物理断云（保留局域网直看）；智能电视保持系统全局直连（`:0`），仅在特定跨境应用内配置代理，网页待机一律采用不断网软黑屏（严禁触发断电关 Wi-Fi 的硬件休眠键码）。
 8. **云端 Agent `B2` 沙箱隔离边界**：云端容器沙箱必须按实例隔离 `--statedir=/tmp/tailscale-<id>`，目标主机双栈防火墙必须通过 `STARHUB-BOT-NOSSH` / `NOSSH6` 硬拦截全部 `:22` SSH。
 9. **凭据零入库与 `0600` 锁权**：严禁将任何 `.env`、私钥、UUID 或非空 `secret` 提交入 Git；线上敏感配置统一锁定 `chmod 0600`。
